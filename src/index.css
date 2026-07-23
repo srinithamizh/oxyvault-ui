@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+:root {
+  --oxyvault-red: #D90429;
+  --oxyvault-green: #006466;
+}
+
+.oxyvault-red{
+  color: var(--oxyvault-red);
+}
+.oxyvault-green{
+  color: var(--oxyvault-green);
+}
