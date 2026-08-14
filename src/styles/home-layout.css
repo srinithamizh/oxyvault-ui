@@ -1,0 +1,39 @@
+/* ═══════════════════════════════════════════════
+   HOME LAYOUT STYLES
+   ═══════════════════════════════════════════════ */
+
+.home-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.home-layout__left {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3rem 2rem;
+  background-color: var(--background);
+
+  /* Responsive: Full width on mobile, 40% on large screens */
+  @media (min-width: 1024px) {
+    width: 40%;
+    padding: 3rem 4rem;
+  }
+}
+
+.home-layout__right {
+  display: none;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(to bottom right, #0369a1, #1e3a8a, #0f172a);
+
+  /* Show on large screens */
+  @media (min-width: 1024px) {
+    display: flex;
+  }
+}

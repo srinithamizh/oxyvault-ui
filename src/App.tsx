@@ -1,22 +1,24 @@
+import { Login } from '@/app/components/Login/Login';
+import { IllustrationSection } from '@/app/components/Login/IllustrationSection';
+import { LoginLayout } from '@/app/layout/LoginLayout';
 import OxyVaultLogo from '@/assets/logo.svg';
-import { ThemeToggle } from '@/app/components/Theme/ThemeToggle';
+import { APP_NAME } from '@/app/utils/constants';
 
 function App() {
+  const oxyVaultLogoAlt = `${APP_NAME} Logo`;
 
   return (
-    <>
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
-        <img src={OxyVaultLogo} alt="OxyVault Logo" className="logo-glow mb-4 h-64 w-64" />
-        <h1 className="text-4xl font-bold text-foreground">
-          Welcome to <span className="oxyvault-red">Oxy</span><span className="oxyvault-green">Vault</span>
-        </h1>
-        <p className="mt-4 text-lg text-muted-foreground">
-          Launching Soon!
-        </p>
-        <ThemeToggle />
-      </div>
-    </>
-  )
+    <LoginLayout
+      rightSection={
+        <IllustrationSection
+          logoSrc={OxyVaultLogo}
+          logoAlt={oxyVaultLogoAlt}
+        />
+      }
+    >
+      <Login />
+    </LoginLayout>
+  );
 }
 
-export default App
+export default App;

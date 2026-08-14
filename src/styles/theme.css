@@ -59,6 +59,13 @@
   --switch-background: #cbd5e1;
 
   /* ─────────────────────────────────────────────
+     Button Colors
+     ───────────────────────────────────────────── */
+  --button-primary: #0369a1;
+  --button-primary-hover: #0284c7;
+  --button-primary-foreground: #ffffff;
+
+  /* ─────────────────────────────────────────────
      Typography
      ───────────────────────────────────────────── */
   --font-weight-medium: 500;
@@ -160,6 +167,13 @@
   --switch-background: #334155;
 
   /* ─────────────────────────────────────────────
+     Button Colors
+     ───────────────────────────────────────────── */
+  --button-primary: #0ea5e9;
+  --button-primary-hover: #06b6d4;
+  --button-primary-foreground: #ffffff;
+
+  /* ─────────────────────────────────────────────
      Focus
      ───────────────────────────────────────────── */
   --ring: #4ade80;
@@ -224,6 +238,10 @@
   --color-input-background: var(--input-background);
 
   --color-switch-background: var(--switch-background);
+
+  --color-button-primary: var(--button-primary);
+  --color-button-primary-hover: var(--button-primary-hover);
+  --color-button-primary-foreground: var(--button-primary-foreground);
 
   --color-ring: var(--ring);
 
