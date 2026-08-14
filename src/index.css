@@ -1,13 +1,20 @@
 @import "tailwindcss";
+@import "./styles/theme.css";
 
 :root {
-  --oxyvault-red: #D90429;
-  --oxyvault-green: #006466;
+  --oxyvault-red: #CD344E;
+  --oxyvault-green: #32BE6D;
 }
 
-.oxyvault-red{
+.oxyvault-red {
   color: var(--oxyvault-red);
 }
-.oxyvault-green{
+
+.oxyvault-green {
   color: var(--oxyvault-green);
+}
+
+.logo-glow {
+  filter: drop-shadow(0 0 18px var(--oxyvault-logo-glow));
+  transition: filter 0.25s ease;
 }
