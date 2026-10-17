@@ -1,0 +1,121 @@
+/* Design tokens — ported from the Figma Make export (OxyVault Financial Tracker/src/index.css) */
+:root {
+  /*
+   * Accent (green is the default). Overridden by [data-accent="..."] below.
+   * --accent       fills: buttons, bars, focus rings
+   * --accent-dark  accent-coloured TEXT/icons on surfaces (a lighter shade in dark mode so it stays readable)
+   * --accent-soft  tinted backgrounds (active menu item, avatar, badges)
+   */
+  --accent: #10b981;
+  --accent-dark: #069669;
+  --accent-soft: #e9fbf4;
+  --accent-strong: #087f5b;
+  --accent-deep: #092c23;
+  --accent-deep-2: #0a533f;
+
+  --bg: #f6f8f9;
+  --surface: #fff;
+  --surface-2: #f8fafb;
+  --border: #e7ecef;
+  --text: #14201d;
+  --muted: #71807b;
+  --danger: #ef5b5b;
+  --danger-soft: #fff0ef;
+  /* Always green, whichever accent is chosen (e.g. the Income badge). */
+  --success-soft: #e9fbf4;
+  --success-text: #069669;
+  --warning: #e59b35;
+  --warning-soft: #fff7e9;
+  --warning-text: #c27a16;
+  --violet-soft: #eef0ff;
+  --violet-text: #6558d9;
+  --shadow: 0 7px 25px rgba(18, 38, 32, 0.055);
+
+  /* Decorative panel on the login / register pages; follows the accent. */
+  --auth-panel-bg:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--accent-deep) 92%, transparent),
+      color-mix(in srgb, var(--accent-deep-2) 88%, transparent)
+    ),
+    radial-gradient(circle at 20% 20%, var(--accent), var(--accent-deep));
+
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0d1412;
+  --surface: #141d1a;
+  --surface-2: #18231f;
+  --border: #26332f;
+  --text: #ecf3f0;
+  --muted: #8fa09a;
+  --accent-soft: #103229;
+  --accent-dark: #34d399;
+  --danger-soft: #321c1d;
+  --success-soft: #103229;
+  --success-text: #34d399;
+  --warning-soft: #33291b;
+  --violet-soft: #252442;
+  --violet-text: #a9a2ff;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.22);
+  color-scheme: dark;
+}
+
+/*
+ * Accent colours. Keep these in sync with `ACCENTS` in src/theme/accents/accents.ts
+ * (the swatch there must equal --accent here; a test enforces it).
+ * Each accent also overrides --accent-soft and --accent-dark for dark mode; those rules are more
+ * specific than `.dark` above so they win.
+ */
+:root[data-accent="blue"] {
+  --accent: #3b82f6;
+  --accent-dark: #1d4ed8;
+  --accent-soft: #eaf2ff;
+  --accent-strong: #1e40af;
+  --accent-deep: #0b1f45;
+  --accent-deep-2: #123b8a;
+}
+:root[data-accent="blue"].dark {
+  --accent-soft: #14264a;
+  --accent-dark: #93c5fd;
+}
+
+:root[data-accent="violet"] {
+  --accent: #8b5cf6;
+  --accent-dark: #6d28d9;
+  --accent-soft: #f1ecff;
+  --accent-strong: #5b21b6;
+  --accent-deep: #1e0f45;
+  --accent-deep-2: #3b1c8f;
+}
+:root[data-accent="violet"].dark {
+  --accent-soft: #261a47;
+  --accent-dark: #c4b5fd;
+}
+
+:root[data-accent="orange"] {
+  --accent: #f97316;
+  --accent-dark: #c2410c;
+  --accent-soft: #fff1e6;
+  --accent-strong: #9a3412;
+  --accent-deep: #3a1706;
+  --accent-deep-2: #7a3410;
+}
+:root[data-accent="orange"].dark {
+  --accent-soft: #3a2112;
+  --accent-dark: #fdba74;
+}
+
+:root[data-accent="rose"] {
+  --accent: #db2777;
+  --accent-dark: #9d174d;
+  --accent-soft: #ffedf5;
+  --accent-strong: #831843;
+  --accent-deep: #3d0b22;
+  --accent-deep-2: #7f1d4a;
+}
+:root[data-accent="rose"].dark {
+  --accent-soft: #3d1a2b;
+  --accent-dark: #f9a8d4;
+}
