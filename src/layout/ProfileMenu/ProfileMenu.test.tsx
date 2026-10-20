@@ -1,15 +1,22 @@
+import { UserRole } from "@/types/user";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ProfileMenu from "./ProfileMenu";
-import { SESSION_STORAGE_KEY } from "@/hooks/useAuth/useAuth";
+import { useAuth } from "@/hooks/useAuth/useAuth";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
-const account = { name: "Arjun Kumar", role: "Administrator" };
+const account = { name: "Arjun Kumar", role: UserRole.Admin };
+
+function SessionState() {
+  const { user } = useAuth();
+  return <p data-testid="session">{user ? "signed in" : "signed out"}</p>;
+}
 
 function renderMenu() {
   return renderWithProviders(
     <div>
       <ProfileMenu user={account} />
+      <SessionState />
       <p>outside</p>
     </div>,
   );
@@ -57,9 +64,14 @@ describe("ProfileMenu", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
+  it("labels the user role as User", () => {
+    renderWithProviders(<ProfileMenu user={{ name: "Meera Nair", role: UserRole.User }} />);
+    expect(screen.getByText("User")).toBeInTheDocument();
+  });
+
   it("shows the user's role under their name", () => {
     renderMenu();
-    expect(screen.getByText(account.role)).toBeInTheDocument();
+    expect(screen.getByText("Administrator")).toBeInTheDocument();
   });
 
   describe("log out", () => {
@@ -81,14 +93,14 @@ describe("ProfileMenu", () => {
       const user = await openLogoutDialog();
       await user.click(screen.getByRole("button", { name: "Cancel" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      expect(window.localStorage.getItem(SESSION_STORAGE_KEY)).not.toBeNull();
+      expect(screen.getByTestId("session")).toHaveTextContent("signed in");
     });
 
     it("ends the session when the user confirms", async () => {
       const user = await openLogoutDialog();
       await user.click(screen.getByRole("button", { name: "Log out" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      expect(window.localStorage.getItem(SESSION_STORAGE_KEY)).toBeNull();
+      expect(screen.getByTestId("session")).toHaveTextContent("signed out");
     });
   });
 });

@@ -2,8 +2,9 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FiMoreHorizontal } from "react-icons/fi";
 import { NavLink, useLocation } from "react-router";
-import { MOBILE_NAV_SLOTS, navItems, type NavItem } from "@/app/navigation";
+import { MOBILE_NAV_SLOTS, navItemsForRole, type NavItem } from "@/app/navigation";
 import Badge from "@/components/Badge/Badge";
+import { useAuth } from "@/hooks/useAuth/useAuth";
 import { useDismiss } from "@/hooks/useDismiss/useDismiss";
 
 export interface MobileNavProps {
@@ -14,8 +15,10 @@ export interface MobileNavProps {
 
 const slotClass = "flex flex-col items-center gap-[3px] px-2 py-[3px] text-[8px]";
 
-export default function MobileNav({ items = navItems, slots = MOBILE_NAV_SLOTS }: MobileNavProps) {
+export default function MobileNav({ items: itemsProp, slots = MOBILE_NAV_SLOTS }: MobileNavProps) {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const items = itemsProp ?? navItemsForRole(user?.role);
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);

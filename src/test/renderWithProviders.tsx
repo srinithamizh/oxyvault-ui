@@ -5,14 +5,16 @@ import SourcesProvider from "@/features/settings/sources/SourcesProvider/Sources
 import PaymentMethodsProvider from "@/features/settings/paymentMethods/PaymentMethodsProvider/PaymentMethodsProvider";
 import TransactionCategoriesProvider from "@/features/settings/transactionCategories/TransactionCategoriesProvider/TransactionCategoriesProvider";
 import AuthProvider from "@/features/auth/AuthProvider/AuthProvider";
+import { UserRole } from "@/types/user";
 import type { AuthUser } from "@/services/authService/authService";
 import ThemeProvider from "@/theme/ThemeProvider/ThemeProvider";
 
 export const testUser: AuthUser = {
   id: "u-test",
   name: "Arjun Kumar",
+  username: "arjun",
   email: "arjun@example.com",
-  role: "Administrator",
+  role: UserRole.Admin,
 };
 
 interface RenderOptions {

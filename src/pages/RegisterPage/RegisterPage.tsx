@@ -1,22 +1,25 @@
 import type { TFunction } from "i18next";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import Button from "@/components/Button/Button";
 import Checkbox from "@/components/Checkbox/Checkbox";
 import PasswordField from "@/components/PasswordField/PasswordField";
 import TextField from "@/components/TextField/TextField";
 import PasswordStrengthMeter from "@/features/auth/PasswordStrengthMeter/PasswordStrengthMeter";
+import { useUsernameAvailability } from "@/hooks/useUsernameAvailability/useUsernameAvailability";
 import { useAuth } from "@/hooks/useAuth/useAuth";
-import { MIN_PASSWORD_LENGTH, validateEmail } from "@/features/auth/validation/validation";
+import { MIN_PASSWORD_LENGTH, validateEmail, validateUsername } from "@/features/auth/validation/validation";
 import AuthHeading from "@/layout/AuthHeading/AuthHeading";
 import { AuthError } from "@/services/authService/authService";
 import type { FieldErrors } from "@/types/forms";
 
-type RegisterField = "name" | "email" | "password" | "confirmPassword" | "terms";
+type RegisterField = "firstName" | "lastName" | "username" | "email" | "password" | "confirmPassword" | "terms";
 
 interface RegisterValues {
-  name: string;
+  firstName: string;
+  lastName: string;
+  username: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -25,7 +28,9 @@ interface RegisterValues {
 
 function validate(values: RegisterValues, t: TFunction): FieldErrors<RegisterField> {
   return {
-    name: values.name.trim() ? undefined : t("auth.errors.nameRequired"),
+    firstName: values.firstName.trim() ? undefined : t("auth.errors.firstNameRequired"),
+    lastName: values.lastName.trim() ? undefined : t("auth.errors.lastNameRequired"),
+    username: validateUsername(values.username, t),
     email: validateEmail(values.email, t),
     password: !values.password
       ? t("auth.errors.createPassword")
@@ -44,11 +49,22 @@ function validate(values: RegisterValues, t: TFunction): FieldErrors<RegisterFie
 export default function RegisterPage() {
   const { t } = useTranslation();
   const { register } = useAuth();
-  const [name, setName] = useState("");
+  const navigate = useNavigate();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [terms, setTerms] = useState(false);
+  const availability = useUsernameAvailability(username);
+  const usernameMessage = {
+    idle: "",
+    taken: "",
+    checking: t("auth.username.checking"),
+    available: t("auth.username.available"),
+    error: t("auth.username.checkFailed"),
+  }[availability];
   const [errors, setErrors] = useState<FieldErrors<RegisterField>>({});
   const [formError, setFormError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
@@ -57,14 +73,17 @@ export default function RegisterPage() {
     event.preventDefault();
     setFormError(undefined);
 
-    const nextErrors = validate({ name, email, password, confirmPassword, terms }, t);
+    const nextErrors = validate({ firstName, lastName, username, email, password, confirmPassword, terms }, t);
+    if (!nextErrors.username && availability === "taken") nextErrors.username = t("auth.errors.usernameTaken");
     setErrors(nextErrors);
     if (Object.values(nextErrors).some(Boolean)) return;
 
     setSubmitting(true);
     try {
-      // On success the session changes and <GuestOnly> redirects away from this page.
-      await register({ name, email, password });
+      await register({ firstName, lastName, username, email, password });
+      // The account exists but isn't signed in (no token from the backend): continue at the login page.
+      navigate("/login", { replace: true, state: { registered: true, identifier: username.trim() } });
+      return;
     } catch (error) {
       setFormError(error instanceof AuthError ? t(`auth.errors.${error.code}`) : t("auth.errors.generic"));
     } finally {
@@ -83,14 +102,43 @@ export default function RegisterPage() {
           </p>
         )}
 
+        <div data-testid="name-row" className="grid grid-cols-2 gap-3">
+          <TextField
+            label={t("auth.fields.firstName")}
+            autoComplete="given-name"
+            placeholder={t("auth.fields.firstNamePlaceholder")}
+            value={firstName}
+            error={errors.firstName}
+            onChange={(event) => setFirstName(event.target.value)}
+          />
+          <TextField
+            label={t("auth.fields.lastName")}
+            autoComplete="family-name"
+            placeholder={t("auth.fields.lastNamePlaceholder")}
+            value={lastName}
+            error={errors.lastName}
+            onChange={(event) => setLastName(event.target.value)}
+          />
+        </div>
         <TextField
-          label={t("auth.fields.fullName")}
-          autoComplete="name"
-          placeholder={t("auth.fields.fullNamePlaceholder")}
-          value={name}
-          error={errors.name}
-          onChange={(event) => setName(event.target.value)}
+          label={t("auth.fields.username")}
+          autoComplete="username"
+          placeholder={t("auth.fields.usernamePlaceholder")}
+          value={username}
+          error={errors.username ?? (availability === "taken" ? t("auth.errors.usernameTaken") : undefined)}
+          onChange={(event) => {
+            setUsername(event.target.value);
+            setErrors((current) => ({ ...current, username: undefined }));
+          }}
         />
+        {usernameMessage && (
+          <p
+            role="status"
+            className={`-mt-2 text-[11px] ${availability === "available" ? "text-success-text" : "text-muted"}`}
+          >
+            {usernameMessage}
+          </p>
+        )}
         <TextField
           label={t("auth.fields.email")}
           type="email"

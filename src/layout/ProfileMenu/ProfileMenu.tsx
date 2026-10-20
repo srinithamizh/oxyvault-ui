@@ -33,7 +33,7 @@ export default function ProfileMenu({ user }: { user: UserSummary }) {
         <Avatar name={user.name} />
         <span className="flex flex-col text-left max-[800px]:hidden">
           <strong className="text-sm">{user.name}</strong>
-          <small className="text-[10px] text-muted">{user.role}</small>
+          <small className="text-[10px] text-muted">{t(`roles.${user.role}`)}</small>
         </span>
         <FiChevronDown size={14} aria-hidden="true" className="max-[800px]:hidden" />
       </button>

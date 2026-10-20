@@ -2,7 +2,8 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import MobileNav from "./MobileNav";
 import { navItems } from "@/app/navigation";
-import { renderWithProviders } from "@/test/renderWithProviders";
+import { renderWithProviders, testUser } from "@/test/renderWithProviders";
+import { UserRole } from "@/types/user";
 
 const getBar = () => screen.getByRole("navigation", { name: "Mobile" });
 
@@ -97,6 +98,13 @@ describe("MobileNav", () => {
   it("has no More button when every item fits in the bar", () => {
     renderWithProviders(<MobileNav items={navItems.slice(0, 5)} />);
     expect(within(getBar()).getAllByRole("link")).toHaveLength(5);
+    expect(screen.queryByRole("button", { name: "More" })).not.toBeInTheDocument();
+  });
+
+  it("hides Admin Panel from regular users, who then need no More button", () => {
+    renderWithProviders(<MobileNav />, { user: { ...testUser, role: UserRole.User } });
+    expect(within(getBar()).getAllByRole("link")).toHaveLength(5);
+    expect(screen.queryByRole("link", { name: "Admin Panel" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "More" })).not.toBeInTheDocument();
   });
 });

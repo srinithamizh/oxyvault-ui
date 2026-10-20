@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { AuthContext, type AuthContextValue } from "@/hooks/useAuth/useAuth";
+import { setUnauthorizedHandler } from "@/services/apiClient/apiClient";
 import {
   login as loginRequest,
   register as registerRequest,
@@ -6,56 +8,40 @@ import {
   type LoginInput,
   type RegisterInput,
 } from "@/services/authService/authService";
-import { AuthContext, SESSION_STORAGE_KEY, type AuthContextValue } from "@/hooks/useAuth/useAuth";
-
-function isAuthUser(value: unknown): value is AuthUser {
-  if (typeof value !== "object" || value === null) return false;
-  const candidate = value as Record<string, unknown>;
-  return ["id", "name", "email", "role"].every((key) => typeof candidate[key] === "string");
-}
-
-function readStoredUser(): AuthUser | null {
-  try {
-    const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    return isAuthUser(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
+import { clearAccessToken, setAccessToken } from "@/services/tokenStore/tokenStore";
 
 export interface AuthProviderProps {
   children: ReactNode;
-  /** Overrides the stored session (used by tests). `null` forces a signed-out start. */
+  /** Starts signed in as this user (used by tests). The bearer token is not set. */
   initialUser?: AuthUser | null;
 }
 
-export default function AuthProvider({ children, initialUser }: AuthProviderProps) {
-  const [user, setUser] = useState<AuthUser | null>(() => (initialUser !== undefined ? initialUser : readStoredUser()));
+/**
+ * Holds the signed-in user in memory. Nothing is persisted: the token lives in `tokenStore` (memory)
+ * and a reload signs the user out, so no credentials or personal data sit in browser storage.
+ */
+export default function AuthProvider({ children, initialUser = null }: AuthProviderProps) {
+  const [user, setUser] = useState<AuthUser | null>(initialUser);
 
+  const logout = useCallback(() => {
+    clearAccessToken();
+    setUser(null);
+  }, []);
+
+  // The backend rejected our token (expired or revoked): drop the session so the route guard shows /login.
   useEffect(() => {
-    try {
-      if (user) window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(user));
-      else window.localStorage.removeItem(SESSION_STORAGE_KEY);
-    } catch {
-      // Storage can be unavailable (private mode); the session still works until reload.
-    }
-  }, [user]);
+    setUnauthorizedHandler(logout);
+    return () => setUnauthorizedHandler(null);
+  }, [logout]);
 
   const login = useCallback(async (input: LoginInput) => {
-    const signedIn = await loginRequest(input);
-    setUser(signedIn);
-    return signedIn;
+    const session = await loginRequest(input);
+    setAccessToken(session.accessToken);
+    setUser(session.user);
+    return session.user;
   }, []);
 
-  const register = useCallback(async (input: RegisterInput) => {
-    const created = await registerRequest(input);
-    setUser(created);
-    return created;
-  }, []);
-
-  const logout = useCallback(() => setUser(null), []);
+  const register = useCallback((input: RegisterInput) => registerRequest(input), []);
 
   const value = useMemo<AuthContextValue>(() => ({ user, login, register, logout }), [user, login, register, logout]);
 

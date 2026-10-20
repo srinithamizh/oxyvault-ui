@@ -5,11 +5,10 @@ export interface AuthContextValue {
   /** The signed-in user, or `null` when signed out. */
   user: AuthUser | null;
   login: (input: LoginInput) => Promise<AuthUser>;
-  register: (input: RegisterInput) => Promise<AuthUser>;
+  /** Creates the account. It does not sign the user in; they log in afterwards. */
+  register: (input: RegisterInput) => Promise<void>;
   logout: () => void;
 }
-
-export const SESSION_STORAGE_KEY = "oxyvault-session";
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 

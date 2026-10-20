@@ -89,10 +89,16 @@
       "tagline": "One calm, secure place for every account, investment and financial goal."
     },
     "fields": {
-      "fullName": "Full name",
-      "fullNamePlaceholder": "Your Name",
+      "firstName": "First name",
+      "firstNamePlaceholder": "First name",
+      "lastName": "Last name",
+      "lastNamePlaceholder": "Last name",
+      "username": "Username",
+      "usernamePlaceholder": "Choose a username",
       "email": "Email address",
       "emailPlaceholder": "you@example.com",
+      "identifier": "Email or username",
+      "identifierPlaceholder": "you@example.com or username",
       "password": "Password",
       "passwordPlaceholder": "••••••••",
       "confirmPassword": "Confirm password"
@@ -103,7 +109,8 @@
       "rememberMe": "Remember me",
       "submit": "Sign in",
       "newHere": "New to OxyVault?",
-      "createAccountLink": "Create an account"
+      "createAccountLink": "Create an account",
+      "registered": "Account created. Sign in to continue."
     },
     "register": {
       "title": "Create your account",
@@ -122,16 +129,28 @@
     "errors": {
       "emailRequired": "Enter your email address.",
       "emailInvalid": "Enter a valid email address.",
+      "identifierRequired": "Enter your email or username.",
       "passwordRequired": "Enter your password.",
       "createPassword": "Create a password.",
       "passwordTooShort": "Use at least {{min}} characters.",
       "confirmRequired": "Confirm your password.",
       "passwordMismatch": "Passwords do not match.",
-      "nameRequired": "Enter your full name.",
+      "firstNameRequired": "Enter your first name.",
+      "lastNameRequired": "Enter your last name.",
+      "usernameRequired": "Choose a username.",
+      "usernameInvalid": "Use {{min}}-{{max}} letters, numbers, dots or underscores.",
       "termsRequired": "You must accept the Terms and Privacy Policy.",
-      "invalidCredentials": "Invalid email or password.",
+      "invalidCredentials": "Invalid email/username or password.",
       "emailTaken": "An account with this email already exists.",
-      "generic": "Something went wrong. Please try again."
+      "usernameTaken": "This username is already taken.",
+      "generic": "Something went wrong. Please try again.",
+      "network": "Can't reach the server. Check your connection and try again.",
+      "tooManyRequests": "Too many attempts. Please wait a moment and try again."
+    },
+    "username": {
+      "checking": "Checking availability…",
+      "available": "Username is available",
+      "checkFailed": "Couldn't check availability right now."
     }
   },
   "sources": {
@@ -254,5 +273,9 @@
     "copyright": "© {{year}} OxyVault. All rights reserved.",
     "developedBy": "Developed by",
     "developerName": "Thamizharasan Srinivasan"
+  },
+  "roles": {
+    "admin": "Administrator",
+    "user": "User"
   }
 }

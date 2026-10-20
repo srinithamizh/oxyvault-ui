@@ -5,6 +5,7 @@ import { useState } from "react";
 import Sidebar from "./Sidebar";
 import { navItems } from "@/app/navigation";
 import { renderWithProviders, testUser } from "@/test/renderWithProviders";
+import { UserRole } from "@/types/user";
 
 function Harness() {
   const [collapsed, setCollapsed] = useState(false);
@@ -43,7 +44,7 @@ describe("Sidebar", () => {
     renderWithProviders(<Harness />);
     const aside = screen.getByRole("complementary");
     expect(within(aside).queryByText(testUser.name)).not.toBeInTheDocument();
-    expect(within(aside).queryByText(testUser.role)).not.toBeInTheDocument();
+    expect(within(aside).queryByText("Administrator")).not.toBeInTheDocument();
   });
 
   it("collapses to icons only and expands again", async () => {
@@ -62,5 +63,15 @@ describe("Sidebar", () => {
     await userEv.click(screen.getByRole("button", { name: "Expand sidebar" }));
     expect(aside).toHaveAttribute("data-collapsed", "false");
     expect(screen.getByText("Your OxyVault Health")).toBeInTheDocument();
+  });
+
+  it("shows Admin Panel to admins only", () => {
+    const view = renderWithProviders(<Harness />, { user: { ...testUser, role: UserRole.Admin } });
+    expect(screen.getByRole("link", { name: "Admin Panel" })).toBeInTheDocument();
+    view.unmount();
+
+    renderWithProviders(<Harness />, { user: { ...testUser, role: UserRole.User } });
+    expect(screen.queryByRole("link", { name: "Admin Panel" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Investments" })).toBeInTheDocument();
   });
 });

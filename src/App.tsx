@@ -1,8 +1,10 @@
+import { UserRole } from "@/types/user";
 import type { ReactElement } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import { pageRoutes, SETTINGS_PATH } from "@/app/navigation";
 import { DEFAULT_SETTINGS_SECTION, settingsSections } from "@/app/settingsSections";
 import GuestOnly from "@/features/auth/GuestOnly/GuestOnly";
+import RequireRole from "@/features/auth/RequireRole/RequireRole";
 import RequireAuth from "@/features/auth/RequireAuth/RequireAuth";
 import AppShell from "@/layout/AppShell/AppShell";
 import AuthLayout from "@/layout/AuthLayout/AuthLayout";
@@ -20,6 +22,8 @@ const DEFAULT_SETTINGS_PATH = `${SETTINGS_PATH}/${DEFAULT_SETTINGS_SECTION}`;
 
 /** Pages that are not built yet; each is replaced by a real page in its own phase. */
 const placeholderRoutes = pageRoutes.filter(({ path }) => path !== SETTINGS_PATH);
+const openRoutes = placeholderRoutes.filter(({ roles }) => !roles);
+const adminRoutes = placeholderRoutes.filter(({ roles }) => roles?.includes(UserRole.Admin));
 
 const settingsPages: Record<string, ReactElement> = {
   appearance: <AppearanceSettingsPage />,
@@ -41,9 +45,14 @@ export default function App() {
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
-          {placeholderRoutes.map(({ labelKey, path }) => (
+          {openRoutes.map(({ labelKey, path }) => (
             <Route key={path} path={path} element={<PlaceholderPage titleKey={labelKey} />} />
           ))}
+          <Route element={<RequireRole roles={[UserRole.Admin]} />}>
+            {adminRoutes.map(({ labelKey, path }) => (
+              <Route key={path} path={path} element={<PlaceholderPage titleKey={labelKey} />} />
+            ))}
+          </Route>
 
           <Route path={SETTINGS_PATH} element={<SettingsPage />}>
             <Route index element={<Navigate to={DEFAULT_SETTINGS_PATH} replace />} />

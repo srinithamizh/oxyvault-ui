@@ -1,9 +1,10 @@
+import { UserRole } from "@/types/user";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Header from "./Header";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
-const user = { name: "Arjun Kumar", role: "Administrator" };
+const user = { name: "Arjun Kumar", role: UserRole.Admin };
 
 describe("Header", () => {
   it("toggles the theme from the header button", async () => {

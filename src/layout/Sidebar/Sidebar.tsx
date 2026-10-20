@@ -1,9 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { FiChevronLeft, FiChevronRight, FiShield } from "react-icons/fi";
 import { NavLink } from "react-router";
-import { navItems } from "@/app/navigation";
+import { navItemsForRole } from "@/app/navigation";
 import Badge from "@/components/Badge/Badge";
 import Logo from "@/components/Logo/Logo";
+import { useAuth } from "@/hooks/useAuth/useAuth";
 
 export interface SidebarProps {
   collapsed: boolean;
@@ -17,6 +18,7 @@ const linkActive = "bg-accent-soft font-bold text-accent-dark";
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const ToggleIcon = collapsed ? FiChevronRight : FiChevronLeft;
 
   return (
@@ -41,7 +43,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </div>
 
       <nav aria-label={t("nav.primary")} className="flex flex-col gap-[5px]">
-        {navItems.map(({ labelKey, path, icon: Icon, badgeKey }) => {
+        {navItemsForRole(user?.role).map(({ labelKey, path, icon: Icon, badgeKey }) => {
           const label = t(labelKey);
           return (
             <NavLink
