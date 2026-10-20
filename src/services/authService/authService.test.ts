@@ -21,11 +21,25 @@ describe("authService", () => {
         accessToken: "token-u-1",
         user: { id: "u-1", name: fullNameOf(seed), username: seed.username, email: seed.email, role: "admin" },
       });
+      expect(fakeBackend.callsTo("/profile")[0].headers.Authorization).toBe(`Bearer token-${seed.id}`);
     });
 
     it("accepts the username as the identifier, ignoring case and whitespace", async () => {
       await expect(login({ identifier: ` ${seed.username.toUpperCase()} `, password: seed.password })).resolves.toMatchObject({
         user: { id: "u-1" },
+      });
+    });
+
+    it("loads a token-only login response using the bearer token and normalizes the profile role", async () => {
+      await expect(login({ identifier: seed.email, password: seed.password })).resolves.toEqual({
+        accessToken: `token-${seed.id}`,
+        user: {
+          id: seed.id,
+          name: fullNameOf(seed),
+          username: seed.username,
+          email: seed.email,
+          role: seed.role,
+        },
       });
     });
 
@@ -69,8 +83,7 @@ describe("authService", () => {
 
     it.each([
       ["no token", { user: { id: "1", name: "A", username: "a", email: "a@b.c", role: "user" } }],
-      ["no user", { accessToken: "t" }],
-      ["an unknown role", { accessToken: "t", user: { id: "1", name: "A", username: "a", email: "a@b.c", role: "root" } }],
+      ["an empty token", { accessToken: "" }],
       ["a string", "ok"],
     ])("refuses a response with %s", async (_label, body) => {
       fakeBackend.failNext(200, body);
@@ -79,8 +92,8 @@ describe("authService", () => {
   });
 
   describe("register", () => {
-    it("posts the trimmed details and resolves with nothing (no session)", async () => {
-      await expect(register(newAccount)).resolves.toBeUndefined();
+    it("posts the trimmed details and returns the server message (no session)", async () => {
+      await expect(register(newAccount)).resolves.toBe("Account created");
 
       const [request] = fakeBackend.callsTo("/auth/register");
       expect(request.method).toBe("POST");
@@ -96,9 +109,9 @@ describe("authService", () => {
       expect(fakeBackend.users.some((account) => account.username === "meera")).toBe(true);
     });
 
-    it("accepts any 2xx, including 201 with an empty body", async () => {
-      fakeBackend.failNext(201);
-      await expect(register(newAccount)).resolves.toBeUndefined();
+    it("returns a string response from registration", async () => {
+      fakeBackend.failNext(201, "Account created");
+      await expect(register(newAccount)).resolves.toBe("Account created");
     });
 
     it("reports an email that is already registered", async () => {

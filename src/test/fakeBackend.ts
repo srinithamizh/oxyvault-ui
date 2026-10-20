@@ -78,22 +78,24 @@ class FakeBackend {
     if (override) return this.respond(override.status, override.body);
 
     const input_ = (body ?? {}) as Record<string, string>;
-    const session = (user: MockUser) => ({
-      accessToken: `token-${user.id}`,
-      user: {
-        id: user.id,
-        name: `${user.firstName} ${user.lastName}`,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-      },
-    });
-
     if (path === "/auth/login" && init.method === "POST") {
       const key = (input_.identifier ?? "").trim().toLowerCase();
       const user = this.users.find((u) => u.email === key || u.username.toLowerCase() === key);
       if (!user || user.password !== input_.password) return this.respond(401, { message: "Invalid credentials" });
-      return this.respond(200, session(user));
+      return this.respond(200, { accessToken: `token-${user.id}` });
+    }
+
+    if (path === "/profile" && (init.method ?? "GET") === "GET") {
+      const token = headers.Authorization?.replace(/^Bearer\s+/i, "");
+      const user = this.users.find((candidate) => `token-${candidate.id}` === token);
+      if (!user) return this.respond(401, { message: "Invalid token" });
+      return this.respond(200, {
+        id: user.id,
+        name: `${user.firstName} ${user.lastName}`,
+        username: user.username,
+        email: user.email,
+        role: user.role.toUpperCase(),
+      });
     }
 
     if (path === "/auth/register" && init.method === "POST") {
@@ -113,7 +115,7 @@ class FakeBackend {
         role: "user",
       };
       this.users.push(user);
-      return this.respond(201, { id: user.id });
+      return this.respond(201, "Account created");
     }
 
     if (path === "/auth/validate-username" && (init.method ?? "GET") === "GET") {

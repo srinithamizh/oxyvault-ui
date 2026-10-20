@@ -68,6 +68,7 @@ export async function createMockedAuthService(): Promise<AuthService> {
         role: "user",
       };
       users = [...users, user];
+      return "Account created";
     }),
 
     checkUsernameAvailable: vi.fn(async (username: string) => {

@@ -1,4 +1,5 @@
 import { ApiError, apiRequest, NetworkError } from "@/services/apiClient/apiClient";
+import { setAccessToken } from "@/services/tokenStore/tokenStore";
 import { isUserRole, type UserSummary } from "@/types/user";
 
 /** Talks to the backend's /auth endpoints. */
@@ -29,6 +30,22 @@ export interface AuthSession {
   user: AuthUser;
 }
 
+export interface LoginResponse {
+  accessToken: string;
+}
+
+export type BackendUserRole = "ADMIN" | "USER";
+
+export interface ProfileResponse {
+  id: string;
+  name: string;
+  username: string;
+  email: string;
+  role: BackendUserRole;
+}
+
+export type RegisterResponse = string;
+
 /** Machine-readable reason for a failed auth call; the UI maps it to a translated message. */
 export type AuthErrorCode =
   | "invalidCredentials"
@@ -48,23 +65,24 @@ export class AuthError extends Error {
   }
 }
 
-function isAuthUser(value: unknown): value is AuthUser {
-  if (typeof value !== "object" || value === null) return false;
-  const candidate = value as Record<string, unknown>;
-  return (
-    ["id", "name", "username", "email"].every((key) => typeof candidate[key] === "string") &&
-    isUserRole(candidate.role)
-  );
+function parseAccessToken(data: LoginResponse): string {
+  const accessToken = data.accessToken.trim();
+  if (!accessToken) throw new AuthError("generic", "Unexpected response from the server.");
+  return accessToken;
 }
 
-/** Never trust the response shape: a malformed answer must not become a signed-in session. */
-function parseSession(data: unknown): AuthSession {
-  const candidate = (typeof data === "object" && data !== null ? data : {}) as Record<string, unknown>;
-  if (typeof candidate.accessToken !== "string" || !candidate.accessToken || !isAuthUser(candidate.user)) {
+function parseUser(data: ProfileResponse): AuthUser {
+  const role = data.role.toLowerCase();
+  if (!isUserRole(role)) {
     throw new AuthError("generic", "Unexpected response from the server.");
   }
-  const { id, name, username, email, role } = candidate.user;
-  return { accessToken: candidate.accessToken, user: { id, name, username, email, role } };
+
+  return { id: data.id, name: data.name, username: data.username, email: data.email, role };
+}
+
+async function loadCurrentUser(): Promise<AuthUser> {
+  const data = await apiRequest<ProfileResponse>("/profile", { auth: true });
+  return parseUser(data);
 }
 
 function toAuthError(error: unknown, conflict?: (body: unknown) => AuthErrorCode): AuthError {
@@ -87,24 +105,28 @@ function registrationConflict(body: unknown): AuthErrorCode {
 
 export async function login({ identifier, password }: LoginInput): Promise<AuthSession> {
   try {
-    const data = await apiRequest<unknown>("/auth/login", {
+    const data = await apiRequest<LoginResponse>("/auth/login", {
       method: "POST",
       auth: false,
       body: { identifier: identifier.trim(), password },
     });
-    return parseSession(data);
+
+    const accessToken = parseAccessToken(data);
+    setAccessToken(accessToken);
+    const currentUser = await loadCurrentUser();
+    return { accessToken, user: currentUser };
   } catch (error) {
     throw toAuthError(error);
   }
 }
 
 /**
- * Creates the account. The backend answers 201 and does NOT sign the user in (no token), so this
- * resolves with nothing and the caller sends the user to the login page. Any failure throws an AuthError.
+ * Creates the account. The backend answers with a string and does NOT sign the user in (no token),
+ * so the caller sends the user to the login page. Any failure throws an AuthError.
  */
-export async function register(input: RegisterInput): Promise<void> {
+export async function register(input: RegisterInput): Promise<RegisterResponse> {
   try {
-    await apiRequest<unknown>("/auth/register", {
+    return await apiRequest<RegisterResponse>("/auth/register", {
       method: "POST",
       auth: false,
       body: {
@@ -122,7 +144,7 @@ export async function register(input: RegisterInput): Promise<void> {
 
 /** Resolves `true` when nobody has taken the username yet. */
 export async function checkUsernameAvailable(username: string, signal?: AbortSignal): Promise<boolean> {
-  const data = await apiRequest<unknown>("/auth/validate-username", {
+  const data = await apiRequest<boolean>("/auth/validate-username", {
     auth: false,
     query: { username },
     signal,
@@ -130,3 +152,11 @@ export async function checkUsernameAvailable(username: string, signal?: AbortSig
   if (typeof data !== "boolean") throw new Error("Unexpected response from /auth/validate-username");
   return data;
 }
+
+export async function logout(): Promise<void> {
+  const data = await apiRequest<void>("/auth/logout", {auth:true});
+  if (data !== undefined) throw new Error("Unexpected response from /auth/logout");
+  setAccessToken(null);
+  return;
+}
+
