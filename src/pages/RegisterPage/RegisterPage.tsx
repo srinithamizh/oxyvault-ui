@@ -154,7 +154,18 @@ export default function RegisterPage() {
           placeholder={t("auth.fields.passwordPlaceholder")}
           value={password}
           error={errors.password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(event) => {
+            const nextPassword = event.target.value;
+            setPassword(nextPassword);
+            setErrors((current) => ({
+              ...current,
+              confirmPassword: confirmPassword
+                ? confirmPassword === nextPassword
+                  ? undefined
+                  : t("auth.errors.passwordMismatch")
+                : current.confirmPassword,
+            }));
+          }}
         />
         <PasswordField
           label={t("auth.fields.confirmPassword")}
@@ -162,7 +173,20 @@ export default function RegisterPage() {
           placeholder={t("auth.fields.passwordPlaceholder")}
           value={confirmPassword}
           error={errors.confirmPassword}
-          onChange={(event) => setConfirmPassword(event.target.value)}
+          onChange={(event) => {
+            const nextConfirmPassword = event.target.value;
+            setConfirmPassword(nextConfirmPassword);
+            setErrors((current) => ({
+              ...current,
+              confirmPassword: nextConfirmPassword
+                ? nextConfirmPassword === password
+                  ? undefined
+                  : t("auth.errors.passwordMismatch")
+                : current.confirmPassword
+                  ? t("auth.errors.confirmRequired")
+                  : undefined,
+            }));
+          }}
         />
 
         <PasswordStrengthMeter password={password} />

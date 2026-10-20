@@ -71,6 +71,8 @@ export async function createMockedAuthService(): Promise<AuthService> {
       return "Account created";
     }),
 
+    logout: vi.fn(async () => {}),
+
     checkUsernameAvailable: vi.fn(async (username: string) => {
       const key = username.trim().toLowerCase();
       return !users.some((u) => u.username.toLowerCase() === key);

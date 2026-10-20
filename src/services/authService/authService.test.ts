@@ -1,6 +1,7 @@
-import { AuthError, checkUsernameAvailable, login, register } from "./authService";
+import { AuthError, checkUsernameAvailable, login, logout, register } from "./authService";
 import { fakeBackend } from "@/test/fakeBackend";
 import { fullNameOf, seedUsers } from "@/test/mockUsers";
+import { getAccessToken, setAccessToken } from "@/services/tokenStore/tokenStore";
 
 const seed = seedUsers[0];
 const newAccount = {
@@ -107,6 +108,27 @@ describe("authService", () => {
       expect(request.init.credentials).toBe("omit");
       expect(request.headers.Authorization).toBeUndefined();
       expect(fakeBackend.users.some((account) => account.username === "meera")).toBe(true);
+    });
+
+    describe("logout", () => {
+      it("posts with the bearer token and clears it after a successful response", async () => {
+        setAccessToken(`token-${seed.id}`);
+
+        await expect(logout()).resolves.toBeUndefined();
+
+        const [request] = fakeBackend.callsTo("/auth/logout");
+        expect(request.method).toBe("POST");
+        expect(request.headers.Authorization).toBe(`Bearer token-${seed.id}`);
+        expect(getAccessToken()).toBeNull();
+      });
+
+      it("clears the local token when the backend logout request fails", async () => {
+        setAccessToken(`token-${seed.id}`);
+        fakeBackend.failNext(500);
+
+        await expect(logout()).rejects.toMatchObject({ code: "generic" });
+        expect(getAccessToken()).toBeNull();
+      });
     });
 
     it("returns a string response from registration", async () => {

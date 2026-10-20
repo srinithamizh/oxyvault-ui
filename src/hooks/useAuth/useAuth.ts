@@ -7,7 +7,7 @@ export interface AuthContextValue {
   login: (input: LoginInput) => Promise<AuthUser>;
   /** Creates the account. It does not sign the user in; they log in afterwards. */
   register: (input: RegisterInput) => Promise<RegisterResponse>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

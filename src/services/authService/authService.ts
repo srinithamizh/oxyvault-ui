@@ -1,5 +1,5 @@
 import { ApiError, apiRequest, NetworkError } from "@/services/apiClient/apiClient";
-import { setAccessToken } from "@/services/tokenStore/tokenStore";
+import { clearAccessToken, setAccessToken } from "@/services/tokenStore/tokenStore";
 import { isUserRole, type UserSummary } from "@/types/user";
 
 /** Talks to the backend's /auth endpoints. */
@@ -154,9 +154,12 @@ export async function checkUsernameAvailable(username: string, signal?: AbortSig
 }
 
 export async function logout(): Promise<void> {
-  const data = await apiRequest<void>("/auth/logout", {auth:true});
-  if (data !== undefined) throw new Error("Unexpected response from /auth/logout");
-  setAccessToken(null);
-  return;
+  try {
+    const data = await apiRequest<void>("/auth/logout", { method: "POST", auth: true });
+    if (data !== undefined) throw new Error("Unexpected response from /auth/logout");
+  } catch (error) {
+    throw toAuthError(error);
+  } finally {
+    clearAccessToken();
+  }
 }
-

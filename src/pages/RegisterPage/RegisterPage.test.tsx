@@ -108,6 +108,15 @@ describe("RegisterPage", () => {
     expect(screen.getByText("Passwords do not match.")).toBeInTheDocument();
   });
 
+  it("shows the mismatch error as soon as the confirmation differs", async () => {
+    const user = userEvent.setup();
+    renderRegister();
+    await user.type(screen.getByLabelText("Password"), "Str0ng!pass");
+    await user.type(screen.getByLabelText("Confirm password"), "Different1!");
+    expect(screen.getByText("Passwords do not match.")).toBeInTheDocument();
+    expect(register).not.toHaveBeenCalled();
+  });
+
   it("requires accepting the terms", async () => {
     const user = userEvent.setup();
     renderRegister();

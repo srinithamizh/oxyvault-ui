@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import AuthProvider from "./AuthProvider";
 import { useAuth } from "@/hooks/useAuth/useAuth";
 import { apiRequest, ApiError } from "@/services/apiClient/apiClient";
-import { AuthError, login, register } from "@/services/authService/authService";
+import { AuthError, login, logout, register } from "@/services/authService/authService";
 import { getAccessToken } from "@/services/tokenStore/tokenStore";
 import { fullNameOf, seedUsers } from "@/test/mockUsers";
 
@@ -131,6 +131,7 @@ describe("AuthProvider", () => {
     await screen.findByText(fullNameOf(seedUsers[0]));
 
     await user.click(screen.getByRole("button", { name: "logout" }));
+    expect(logout).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("who")).toHaveTextContent("signed out");
     expect(getAccessToken()).toBeNull();
   });

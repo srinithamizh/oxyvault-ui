@@ -98,6 +98,11 @@ class FakeBackend {
       });
     }
 
+    if (path === "/auth/logout" && init.method === "POST") {
+      if (!headers.Authorization) return this.respond(401, { message: "Unauthorized" });
+      return this.respond(204);
+    }
+
     if (path === "/auth/register" && init.method === "POST") {
       const email = (input_.email ?? "").trim().toLowerCase();
       const username = (input_.username ?? "").trim().toLowerCase();

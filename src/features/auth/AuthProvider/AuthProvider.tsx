@@ -3,6 +3,7 @@ import { AuthContext, type AuthContextValue } from "@/hooks/useAuth/useAuth";
 import { setUnauthorizedHandler } from "@/services/apiClient/apiClient";
 import {
   login as loginRequest,
+  logout as logoutRequest,
   register as registerRequest,
   type AuthUser,
   type LoginInput,
@@ -23,16 +24,24 @@ export interface AuthProviderProps {
 export default function AuthProvider({ children, initialUser = null }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(initialUser);
 
-  const logout = useCallback(() => {
+  const clearSession = useCallback(() => {
     clearAccessToken();
     setUser(null);
   }, []);
 
+  const logout = useCallback(async () => {
+    try {
+      await logoutRequest();
+    } finally {
+      clearSession();
+    }
+  }, [clearSession]);
+
   // The backend rejected our token (expired or revoked): drop the session so the route guard shows /login.
   useEffect(() => {
-    setUnauthorizedHandler(logout);
+    setUnauthorizedHandler(clearSession);
     return () => setUnauthorizedHandler(null);
-  }, [logout]);
+  }, [clearSession]);
 
   const login = useCallback(async (input: LoginInput) => {
     const session = await loginRequest(input);
