@@ -81,7 +81,7 @@ function parseUser(data: ProfileResponse): AuthUser {
   return { id: data.id, name: data.name, username: data.username, email: data.email, role };
 }
 
-async function loadCurrentUser(): Promise<AuthUser> {
+export async function loadCurrentUser(): Promise<AuthUser> {
   const data = await apiRequest<ProfileResponse>("/profile", { auth: true });
   return parseUser(data);
 }

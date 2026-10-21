@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { AuthContext, type AuthContextValue } from "@/hooks/useAuth/useAuth";
 import { setUnauthorizedHandler } from "@/services/apiClient/apiClient";
 import {
+  loadCurrentUser,
   login as loginRequest,
   logout as logoutRequest,
   register as registerRequest,
@@ -9,20 +10,17 @@ import {
   type LoginInput,
   type RegisterInput,
 } from "@/services/authService/authService";
-import { clearAccessToken, setAccessToken } from "@/services/tokenStore/tokenStore";
+import { clearAccessToken, getAccessToken, setAccessToken } from "@/services/tokenStore/tokenStore";
 
 export interface AuthProviderProps {
   children: ReactNode;
-  /** Starts signed in as this user (used by tests). The bearer token is not set. */
+  /** Overrides the restored session (used by tests). The bearer token is not set. */
   initialUser?: AuthUser | null;
 }
 
-/**
- * Holds the signed-in user in memory. Nothing is persisted: the token lives in `tokenStore` (memory)
- * and a reload signs the user out, so no credentials or personal data sit in browser storage.
- */
-export default function AuthProvider({ children, initialUser = null }: AuthProviderProps) {
-  const [user, setUser] = useState<AuthUser | null>(initialUser);
+export default function AuthProvider({ children, initialUser }: AuthProviderProps) {
+  const [user, setUser] = useState<AuthUser | null>(initialUser ?? null);
+  const [isInitializing, setIsInitializing] = useState(initialUser === undefined && Boolean(getAccessToken()));
 
   const clearSession = useCallback(() => {
     clearAccessToken();
@@ -43,6 +41,31 @@ export default function AuthProvider({ children, initialUser = null }: AuthProvi
     return () => setUnauthorizedHandler(null);
   }, [clearSession]);
 
+  useEffect(() => {
+    if (initialUser !== undefined || !getAccessToken()) return;
+
+    let active = true;
+    loadCurrentUser()
+      .then((currentUser) => {
+        if (active) setUser(currentUser);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        clearSession();
+        console.error(
+          "Could not restore the saved session.",
+          error instanceof Error ? error.message : "Unexpected error",
+        );
+      })
+      .finally(() => {
+        if (active) setIsInitializing(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [clearSession, initialUser]);
+
   const login = useCallback(async (input: LoginInput) => {
     const session = await loginRequest(input);
     setAccessToken(session.accessToken);
@@ -52,7 +75,10 @@ export default function AuthProvider({ children, initialUser = null }: AuthProvi
 
   const register = useCallback((input: RegisterInput) => registerRequest(input), []);
 
-  const value = useMemo<AuthContextValue>(() => ({ user, login, register, logout }), [user, login, register, logout]);
+  const value = useMemo<AuthContextValue>(
+    () => ({ user, isInitializing, login, register, logout }),
+    [user, isInitializing, login, register, logout],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

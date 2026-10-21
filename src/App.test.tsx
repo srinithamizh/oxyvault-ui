@@ -12,6 +12,19 @@ vi.mock("@/services/authService/authService", async () => {
   return createMockedAuthService();
 });
 
+vi.mock("@/services/usersService/usersService", () => ({
+  getUsers: vi.fn(async (number: number, size: number) => ({
+    content: [],
+    first: number === 0,
+    last: true,
+    number,
+    size,
+    totalElements: 0,
+    totalPages: 0,
+  })),
+  updateUserRole: vi.fn(),
+}));
+
 describe("App routing", () => {
   it("redirects the root path to the dashboard", () => {
     renderWithProviders(<App />, { route: "/" });
@@ -97,6 +110,12 @@ describe("App routing", () => {
   it("lets admins open the Admin Panel", () => {
     renderWithProviders(<App />, { route: "/admin", user: { ...testUser, role: UserRole.Admin } });
     expect(screen.getByRole("heading", { level: 1, name: "Admin Panel" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Manage Users" })).toBeInTheDocument();
+  });
+
+  it("opens the Manage Users subpage directly", () => {
+    renderWithProviders(<App />, { route: "/admin/users", user: { ...testUser, role: UserRole.Admin } });
+    expect(screen.getByRole("heading", { level: 2, name: "Manage Users" })).toBeInTheDocument();
   });
 
   it("sends regular users away from the Admin Panel", () => {

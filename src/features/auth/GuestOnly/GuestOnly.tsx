@@ -11,9 +11,10 @@ function getRedirectTarget(state: unknown): string {
  * asked for (or the dashboard), which is also how a successful sign-in navigates away.
  */
 export default function GuestOnly() {
-  const { user } = useAuth();
+  const { user, isInitializing } = useAuth();
   const location = useLocation();
 
+  if (isInitializing) return null;
   if (user) return <Navigate to={getRedirectTarget(location.state)} replace />;
   return <Outlet />;
 }

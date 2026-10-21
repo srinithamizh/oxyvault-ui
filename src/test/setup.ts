@@ -15,6 +15,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.resetAllMocks();
   window.localStorage.clear();
+  window.sessionStorage.clear();
   document.documentElement.classList.remove("dark");
   delete document.documentElement.dataset.accent;
 });

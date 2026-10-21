@@ -27,6 +27,31 @@
     "more": "More",
     "moreMenu": "More pages"
   },
+  "adminPanel": {
+    "subtitle": "Manage users and administrator access.",
+    "navLabel": "Admin sections",
+    "manageUsers": "Manage Users"
+  },
+  "adminUsers": {
+    "title": "Manage Users",
+    "subtitle": "View user accounts and manage their access roles.",
+    "name": "Name",
+    "username": "Username",
+    "email": "Email",
+    "role": "Role",
+    "cannotEditOwnRole": "It's you, so you can't edit your own role.",
+    "changeRoleFor": "Role for {{name}}",
+    "saving": "Saving…",
+    "loadError": "Couldn't load users. Please try again.",
+    "roleUpdateError": "Couldn't update this user's role. Please try again.",
+    "retry": "Try again",
+    "empty": "No users found.",
+    "paginationEmpty": "No users to display",
+    "paginationSummary": "Showing {{from}}–{{to}} of {{total}} users",
+    "page": "Page {{current}} of {{total}}",
+    "previous": "Previous",
+    "next": "Next"
+  },
   "settings": {
     "title": "Settings",
     "subtitle": "Personalise OxyVault to work your way.",
@@ -81,6 +106,15 @@
   },
   "placeholder": {
     "comingSoon": "This page is coming in a later phase."
+  },
+  "healthCheck": {
+    "open": "Check server connection",
+    "title": "Server connection",
+    "description": "Wake the server and check when it is available.",
+    "waiting": "Waiting for the server… {{seconds}} seconds remaining.",
+    "success": "All Good",
+    "failure": "Can't connect to the server. Try reconnecting.",
+    "retry": "Reconnect"
   },
   "auth": {
     "layout": {

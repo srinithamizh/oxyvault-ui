@@ -30,6 +30,8 @@ export interface RequestOptions {
   body?: unknown;
   query?: Record<string, string>;
   signal?: AbortSignal;
+  /** Require an exact response status instead of accepting any 2xx response. */
+  expectedStatus?: number;
   /** Attach the bearer token. Set to `false` for public endpoints such as login. Defaults to `true`. */
   auth?: boolean;
   /** Show the global loader while waiting. Set to `false` for background checks. Defaults to `true`. */
@@ -70,7 +72,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 }
 
 async function sendRequest<T>(path: string, options: RequestOptions): Promise<T> {
-  const { method = "GET", body, query, signal, auth = true } = options;
+  const { method = "GET", body, query, signal, auth = true, expectedStatus } = options;
 
   const url = new URL(`${API_BASE_URL}${path}`);
   for (const [key, value] of Object.entries(query ?? {})) url.searchParams.set(key, value);
@@ -106,7 +108,7 @@ async function sendRequest<T>(path: string, options: RequestOptions): Promise<T>
   }
 
   const data = await readBody(response);
-  if (!response.ok) {
+  if (!response.ok || (expectedStatus !== undefined && response.status !== expectedStatus)) {
     if (response.status === 401 && token) onUnauthorized?.();
     throw new ApiError(response.status, data);
   }

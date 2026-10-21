@@ -55,7 +55,7 @@ describe("AuthProvider", () => {
     expect(screen.getByTestId("who")).toHaveTextContent("signed out");
   });
 
-  it("signs in, exposes the user and keeps the token in memory only", async () => {
+  it("signs in and persists the token for the current tab", async () => {
     const user = userEvent.setup();
     renderProbe();
     await user.click(screen.getByRole("button", { name: "login" }));
@@ -63,7 +63,7 @@ describe("AuthProvider", () => {
     expect(await screen.findByText(fullNameOf(seedUsers[0]))).toBeInTheDocument();
     expect(getAccessToken()).toBe("token-u-1");
     expect(window.localStorage.length).toBe(0);
-    expect(window.sessionStorage.length).toBe(0);
+    expect(window.sessionStorage.getItem("oxyvault-access-token")).toBe("token-u-1");
     expect(document.cookie).toBe("");
   });
 
@@ -136,13 +136,21 @@ describe("AuthProvider", () => {
     expect(getAccessToken()).toBeNull();
   });
 
-  it("does not restore a session from browser storage", () => {
-    window.localStorage.setItem(
-      "oxyvault-session",
-      JSON.stringify({ id: "u-1", name: "Stored User", username: "stored", email: "s@example.com", role: "user" }),
-    );
+  it("restores a session after refresh by validating its token", async () => {
+    window.sessionStorage.setItem("oxyvault-access-token", "stored-token");
+    stubFetch(200, {
+      id: seedUsers[0].id,
+      name: fullNameOf(seedUsers[0]),
+      username: seedUsers[0].username,
+      email: seedUsers[0].email,
+      role: "ADMIN",
+    });
+
     renderProbe();
-    expect(screen.getByTestId("who")).toHaveTextContent("signed out");
+
+    expect(await screen.findByText(fullNameOf(seedUsers[0]))).toBeInTheDocument();
+    expect(getAccessToken()).toBe("stored-token");
+    expect(window.sessionStorage.getItem("oxyvault-access-token")).toBe("stored-token");
   });
 
   it("signs out when the backend rejects the token with 401", async () => {

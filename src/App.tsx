@@ -16,6 +16,8 @@ import ManageSourcesPage from "@/pages/ManageSourcesPage/ManageSourcesPage";
 import PaymentMethodsPage from "@/pages/PaymentMethodsPage/PaymentMethodsPage";
 import TransactionCategoriesPage from "@/pages/TransactionCategoriesPage/TransactionCategoriesPage";
 import AppearanceSettingsPage from "@/pages/AppearanceSettingsPage/AppearanceSettingsPage";
+import AdminPage from "@/pages/AdminPage/AdminPage";
+import AdminUsersPage from "@/pages/AdminUsersPage/AdminUsersPage";
 
 /** Absolute on purpose: a relative target inside a splat route would be appended to the unknown path and loop. */
 const DEFAULT_SETTINGS_PATH = `${SETTINGS_PATH}/${DEFAULT_SETTINGS_SECTION}`;
@@ -49,7 +51,12 @@ export default function App() {
             <Route key={path} path={path} element={<PlaceholderPage titleKey={labelKey} />} />
           ))}
           <Route element={<RequireRole roles={[UserRole.Admin]} />}>
-            {adminRoutes.map(({ labelKey, path }) => (
+            <Route path="/admin" element={<AdminPage />}>
+              <Route index element={<Navigate to="/admin/users" replace />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="*" element={<Navigate to="/admin/users" replace />} />
+            </Route>
+            {adminRoutes.filter(({ path }) => path !== "/admin").map(({ labelKey, path }) => (
               <Route key={path} path={path} element={<PlaceholderPage titleKey={labelKey} />} />
             ))}
           </Route>

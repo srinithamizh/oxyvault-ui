@@ -55,6 +55,15 @@ describe("apiRequest", () => {
     await expect(attempt).rejects.toMatchObject({ status: 409, body: { code: "X" } });
   });
 
+  it("can require an exact successful response status", async () => {
+    await expect(
+      apiRequest("/auth/validate-username", { query: { username: "free" }, expectedStatus: 200 }),
+    ).resolves.toBe(true);
+    await expect(
+      apiRequest("/auth/validate-username", { query: { username: "free" }, expectedStatus: 201 }),
+    ).rejects.toMatchObject({ name: "ApiError", status: 200 });
+  });
+
   it("throws a NetworkError when the request never completes", async () => {
     fakeBackend.goOfflineOnce();
     await expect(apiRequest("/anything")).rejects.toBeInstanceOf(NetworkError);

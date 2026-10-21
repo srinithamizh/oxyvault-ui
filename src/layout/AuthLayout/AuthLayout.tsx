@@ -1,10 +1,12 @@
 import { useTranslation } from "react-i18next";
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
+import BackendHealthCheck from "@/components/BackendHealthCheck/BackendHealthCheck";
 import Logo from "@/components/Logo/Logo";
 import SiteFooter from "@/components/SiteFooter/SiteFooter";
 
 export default function AuthLayout() {
   const { t } = useTranslation();
+  const location = useLocation();
 
   return (
     <div className="relative grid min-h-screen grid-cols-[1.15fr_0.85fr] items-center bg-surface max-[1150px]:grid-cols-2 max-[800px]:block max-[800px]:pb-[30px] max-[800px]:pt-20">
@@ -28,11 +30,13 @@ export default function AuthLayout() {
         </div>
       </section>
 
-      <div className="flex min-h-screen flex-col max-[800px]:min-h-0">
+      <div className="flex min-h-screen flex-col">
         <main className="mx-auto flex w-[min(440px,calc(100%-50px))] flex-1 flex-col justify-center px-[30px] py-5 max-[800px]:w-[min(500px,calc(100%-24px))] max-[800px]:px-5">
           <Outlet />
         </main>
-        <SiteFooter className="px-5 py-4" />
+        <SiteFooter className="px-5 py-4">
+          {location.pathname === "/login" && <BackendHealthCheck />}
+        </SiteFooter>
       </div>
     </div>
   );
