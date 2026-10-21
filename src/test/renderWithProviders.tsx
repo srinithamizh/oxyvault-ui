@@ -8,6 +8,11 @@ import AuthProvider from "@/features/auth/AuthProvider/AuthProvider";
 import { UserRole } from "@/types/user";
 import type { AuthUser } from "@/services/authService/authService";
 import ThemeProvider from "@/theme/ThemeProvider/ThemeProvider";
+import type { TransactionCategory } from "@/types/transactionOptions";
+import { testSources } from "@/test/fixtures/sources";
+import type { Source } from "@/types/source";
+import type { PaymentMethod } from "@/types/transactionOptions";
+import { testPaymentMethods } from "@/test/fixtures/paymentMethods";
 
 export const testUser: AuthUser = {
   id: "u-test",
@@ -21,15 +26,30 @@ interface RenderOptions {
   route?: string;
   /** Signed-in user for the test. Pass `null` to start signed out. Defaults to `testUser`. */
   user?: AuthUser | null;
+  /** Category fixtures for tests; defaults to an empty list without triggering an API request. */
+  initialCategories?: TransactionCategory[];
+  /** Source fixtures for tests; defaults to test sources without triggering an API request. */
+  initialSources?: Source[] | null;
+  /** Payment-method fixtures for tests; defaults to test data without triggering an API request. */
+  initialMethods?: PaymentMethod[] | null;
 }
 
-export function renderWithProviders(ui: ReactElement, { route = "/", user = testUser }: RenderOptions = {}) {
+export function renderWithProviders(
+  ui: ReactElement,
+  {
+    route = "/",
+    user = testUser,
+    initialCategories = [],
+    initialSources = testSources,
+    initialMethods = testPaymentMethods,
+  }: RenderOptions = {},
+) {
   return render(
     <ThemeProvider>
       <AuthProvider initialUser={user}>
-        <SourcesProvider>
-          <PaymentMethodsProvider>
-            <TransactionCategoriesProvider>
+        <SourcesProvider initialSources={initialSources ?? undefined}>
+          <PaymentMethodsProvider initialMethods={initialMethods ?? undefined}>
+            <TransactionCategoriesProvider initialCategories={initialCategories}>
               <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
             </TransactionCategoriesProvider>
           </PaymentMethodsProvider>

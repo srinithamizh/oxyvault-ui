@@ -1,12 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import SourceFormModal from "./SourceFormModal";
-import { seedSources } from "@/data/mockSources";
+import { testSources } from "@/test/fixtures/sources";
 
 describe("SourceFormModal (add)", () => {
   it("offers bank, credit card and loan (not cash) with bank selected", () => {
     render(<SourceFormModal onSave={() => {}} onClose={() => {}} />);
-    expect(screen.getAllByRole("radio", { name: /^(Bank|Credit card|Cash|Loan)$/ })).toHaveLength(3);
+    expect(screen.getAllByRole("radio", { name: /^(Bank|Credit card|Loan)$/ })).toHaveLength(3);
     expect(screen.queryByRole("radio", { name: "Cash" })).not.toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Bank" })).toBeChecked();
     expect(screen.getByRole("textbox", { name: "Bank name" })).toBeInTheDocument();
@@ -39,7 +39,7 @@ describe("SourceFormModal (add)", () => {
     render(<SourceFormModal onSave={onSave} onClose={() => {}} />);
     await user.click(screen.getByRole("button", { name: "Add source" }));
     expect(screen.getByText("Enter the bank name.")).toBeInTheDocument();
-    expect(screen.getByText("Enter exactly 4 digits.")).toBeInTheDocument();
+    expect(screen.getByText("Enter a valid amount.")).toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
   });
 
@@ -88,24 +88,8 @@ describe("SourceFormModal (add)", () => {
 });
 
 describe("SourceFormModal (edit)", () => {
-  const cash = seedSources.find((source) => source.type === "cash")!;
-
-  it("lets cash change only its balance", async () => {
-    const user = userEvent.setup();
-    const onSave = vi.fn();
-    render(<SourceFormModal source={cash} onSave={onSave} onClose={() => {}} />);
-    expect(screen.queryByRole("radio", { name: "Bank" })).not.toBeInTheDocument();
-    expect(screen.getAllByRole("textbox")).toHaveLength(1);
-    const balance = screen.getByRole("textbox", { name: "Current balance (₹)" });
-    expect(balance).toHaveValue("12450");
-    await user.clear(balance);
-    await user.type(balance, "20000");
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
-    expect(onSave).toHaveBeenCalledWith({ type: "cash", name: "Cash", balance: 20000 });
-  });
-
   it("pre-fills a bank account", () => {
-    const bank = seedSources[0];
+    const bank = testSources[0];
     render(<SourceFormModal source={bank} onSave={() => {}} onClose={() => {}} />);
     expect(screen.getByRole("textbox", { name: "Bank name" })).toHaveValue("HDFC Bank");
     expect(screen.getByRole("radio", { name: "Savings" })).toBeChecked();

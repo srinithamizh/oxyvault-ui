@@ -9,7 +9,8 @@
     "hide": "Hide",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "retry": "Try again"
   },
   "nav": {
     "primary": "Primary",
@@ -44,7 +45,6 @@
     "saving": "Saving…",
     "loadError": "Couldn't load users. Please try again.",
     "roleUpdateError": "Couldn't update this user's role. Please try again.",
-    "retry": "Try again",
     "empty": "No users found.",
     "paginationEmpty": "No users to display",
     "paginationSummary": "Showing {{from}}–{{to}} of {{total}} users",
@@ -194,6 +194,9 @@
     "add": "Add source",
     "listLabel": "Financial sources",
     "empty": "No sources yet. Add a bank account, card, cash or loan to get started.",
+    "loadError": "Couldn't load sources. Please try again.",
+    "mutationError": "Couldn't save the source. Please try again.",
+    "retry": "Try again",
     "types": {
       "bank": "Bank",
       "card": "Credit card",
@@ -224,18 +227,22 @@
       "editTitle": "Edit source",
       "editDescription": "Update the details of this source.",
       "typeLegend": "Source type",
-      "cashHint": "Cash is added by default. You can only update its balance.",
+      "cashHint": "Cash is added automatically with a zero balance and cannot be edited or deleted.",
       "add": "Add source",
       "save": "Save changes"
     },
     "summary": {
+      "bankDefault": "Bank account",
       "bank": "{{accountType}} account · ••{{last4}}",
-      "creditCard": "Credit card · ••{{last4}} · Limit {{limit}}",
+      "card": "Credit card",
+      "creditLimit": "Limit {{limit}}",
       "cash": "Cash wallet",
-      "loan": "{{provider}} · EMI {{emi}} · {{rate}}% p.a."
+      "emi": "EMI {{emi}}",
+      "loanDefault": "Loan"
     },
     "row": {
       "edit": "Edit {{name}}",
+      "editCashBalance": "Edit cash balance",
       "delete": "Delete {{name}}"
     },
     "delete": {
@@ -250,7 +257,7 @@
       "providerRequired": "Enter the loan provider.",
       "amountInvalid": "Enter a valid amount.",
       "amountPositive": "Enter an amount greater than zero.",
-      "interestRateInvalid": "Enter a rate between 0 and 100.",
+      "interestRateInvalid": "Enter a rate of zero or greater.",
       "lastFourInvalid": "Enter exactly 4 digits."
     },
     "edit": "Edit",
@@ -275,6 +282,8 @@
       "editTitle": "Edit payment method",
       "nameLabel": "Payment method name",
       "empty": "No payment methods yet.",
+      "loadError": "Couldn't load payment methods. Please try again.",
+      "mutationError": "Couldn't save the payment method. Please try again.",
       "edit": "Edit payment methods",
       "done": "Done editing payment methods"
     },
@@ -287,6 +296,8 @@
       "editTitle": "Edit category",
       "nameLabel": "Category name",
       "empty": "No categories yet.",
+      "loadError": "Couldn't load categories. Please try again.",
+      "mutationError": "Couldn't save the category. Please try again.",
       "edit": "Edit categories",
       "done": "Done editing categories"
     },

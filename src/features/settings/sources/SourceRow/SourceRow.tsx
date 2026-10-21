@@ -21,14 +21,24 @@ export default function SourceRow({ source, onEdit, onDelete, editing }: SourceR
   let amount: string | null = null;
   switch (source.type) {
     case "bank":
-      subtitle = t("sources.summary.bank", {
-        accountType: t(`sources.accountTypes.${source.accountType}`),
-        last4: source.lastFour,
-      });
+      subtitle = [
+        source.accountType ? `${t(`sources.accountTypes.${source.accountType}`)} account` : "",
+        source.lastFour ? `••${source.lastFour}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ") || t("sources.summary.bankDefault");
       amount = formatCurrency(source.balance);
       break;
     case "card":
-      subtitle = t("sources.summary.creditCard", { last4: source.lastFour, limit: formatCurrency(source.creditLimit) });
+      subtitle = [
+        t("sources.summary.card"),
+        source.lastFour ? `••${source.lastFour}` : "",
+        source.creditLimit !== undefined
+          ? t("sources.summary.creditLimit", { limit: formatCurrency(source.creditLimit) })
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
       amount = formatCurrency(source.balance);
       break;
     case "cash":
@@ -36,11 +46,13 @@ export default function SourceRow({ source, onEdit, onDelete, editing }: SourceR
       amount = formatCurrency(source.balance);
       break;
     case "loan":
-      subtitle = t("sources.summary.loan", {
-        provider: source.provider,
-        emi: formatCurrency(source.emi),
-        rate: source.interestRate,
-      });
+      subtitle = [
+        source.provider ?? "",
+        source.emi !== undefined ? t("sources.summary.emi", { emi: formatCurrency(source.emi) }) : "",
+        source.interestRate !== undefined ? `${source.interestRate}% p.a.` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ") || t("sources.summary.loanDefault");
       amount = formatCurrency(source.balance);
       break;
   }
@@ -61,7 +73,15 @@ export default function SourceRow({ source, onEdit, onDelete, editing }: SourceR
       )}
       {editing && (
         <div className="flex shrink-0">
-          <IconButton icon={FiEdit2} label={t("sources.row.edit", { name: source.name })} onClick={() => onEdit(source)} />
+          {source.type === "cash" ? (
+            <IconButton
+              icon={FiEdit2}
+              label={t("sources.row.editCashBalance")}
+              onClick={() => onEdit(source)}
+            />
+          ) : (
+            <IconButton icon={FiEdit2} label={t("sources.row.edit", { name: source.name })} onClick={() => onEdit(source)} />
+          )}
           {source.type !== "cash" && (
             <IconButton
               icon={FiTrash2}

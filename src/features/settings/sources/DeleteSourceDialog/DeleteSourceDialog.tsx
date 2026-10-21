@@ -5,10 +5,11 @@ import Modal from "@/components/Modal/Modal";
 export interface DeleteSourceDialogProps {
   name: string;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
+  error?: string | null;
 }
 
-export default function DeleteSourceDialog({ name, onCancel, onConfirm }: DeleteSourceDialogProps) {
+export default function DeleteSourceDialog({ name, onCancel, onConfirm, error }: DeleteSourceDialogProps) {
   const { t } = useTranslation();
 
   return (
@@ -21,6 +22,7 @@ export default function DeleteSourceDialog({ name, onCancel, onConfirm }: Delete
           {t("sources.delete.confirm")}
         </Button>
       </div>
+      {error && <p role="alert" className="mt-3 text-[11px] text-danger">{error}</p>}
     </Modal>
   );
 }

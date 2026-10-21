@@ -1,11 +1,27 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PaymentMethodsPage from "./PaymentMethodsPage";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { createPaymentMethod, deletePaymentMethod, updatePaymentMethod } from "@/services/paymentMethodsService/paymentMethodsService";
+
+vi.mock("@/services/paymentMethodsService/paymentMethodsService", () => ({
+  getPaymentMethods: vi.fn(),
+  createPaymentMethod: vi.fn(),
+  updatePaymentMethod: vi.fn(),
+  deletePaymentMethod: vi.fn(),
+  clearPaymentMethodsCache: vi.fn(),
+}));
 
 const list = () => screen.getByRole("list", { name: "Payment methods" });
 
 describe("PaymentMethodsPage", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(createPaymentMethod).mockImplementation(async (input) => ({ ...input, id: "m-new" }));
+    vi.mocked(updatePaymentMethod).mockImplementation(async (id, input) => ({ ...input, id }));
+    vi.mocked(deletePaymentMethod).mockResolvedValue();
+  });
+
   it("lists the default payment methods and nothing else", () => {
     renderWithProviders(<PaymentMethodsPage />);
     expect(within(list()).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
@@ -35,7 +51,7 @@ describe("PaymentMethodsPage", () => {
     await user.type(screen.getByRole("textbox", { name: "Payment method name" }), "Cheque");
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(within(list()).getByText("Cheque")).toBeInTheDocument();
+    expect(await within(list()).findByText("Cheque")).toBeInTheDocument();
   });
 
   it("rejects an empty or duplicate name", async () => {
@@ -59,7 +75,7 @@ describe("PaymentMethodsPage", () => {
     await user.clear(field);
     await user.type(field, "UPI / QR");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
-    expect(within(list()).getByText("UPI / QR")).toBeInTheDocument();
+    expect(await within(list()).findByText("UPI / QR")).toBeInTheDocument();
     expect(within(list()).queryByText("UPI")).not.toBeInTheDocument();
   });
 
@@ -83,6 +99,6 @@ describe("PaymentMethodsPage", () => {
     await user.click(screen.getByRole("button", { name: "Delete Loan" }));
     expect(screen.getByRole("dialog", { name: "Delete Loan?" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Delete" }));
-    expect(within(list()).queryByText("Loan")).not.toBeInTheDocument();
+    await waitFor(() => expect(within(list()).queryByText("Loan")).not.toBeInTheDocument());
   });
 });

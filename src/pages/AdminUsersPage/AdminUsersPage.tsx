@@ -225,7 +225,7 @@ export default function AdminUsersPage() {
                 setRetryCount((count) => count + 1);
               }}
             >
-              {t("adminUsers.retry")}
+              {t("common.retry")}
             </Button>
           </div>
         ) : (

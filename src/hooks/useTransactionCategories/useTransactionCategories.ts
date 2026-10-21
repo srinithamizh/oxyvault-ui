@@ -3,9 +3,12 @@ import type { TransactionCategory, TransactionCategoryInput } from "@/types/tran
 
 export interface TransactionCategoriesContextValue {
   categories: TransactionCategory[];
-  addCategory: (input: TransactionCategoryInput) => void;
-  updateCategory: (id: string, input: TransactionCategoryInput) => void;
-  removeCategory: (id: string) => void;
+  loading: boolean;
+  error: "load" | "mutation" | null;
+  reloadCategories: () => Promise<void>;
+  addCategory: (input: TransactionCategoryInput) => Promise<void>;
+  updateCategory: (id: string, input: TransactionCategoryInput) => Promise<void>;
+  removeCategory: (id: string) => Promise<void>;
 }
 
 export const TransactionCategoriesContext = createContext<TransactionCategoriesContextValue | null>(null);

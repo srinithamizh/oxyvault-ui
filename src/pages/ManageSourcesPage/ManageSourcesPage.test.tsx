@@ -2,8 +2,24 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ManageSourcesPage from "./ManageSourcesPage";
 import { renderWithProviders } from "@/test/renderWithProviders";
+import { createSource, deleteSource, getSources, updateSource } from "@/services/sourcesService/sourcesService";
+
+vi.mock("@/services/sourcesService/sourcesService", () => ({
+  getSources: vi.fn(),
+  createSource: vi.fn(),
+  updateSource: vi.fn(),
+  deleteSource: vi.fn(),
+  clearSourcesCache: vi.fn(),
+}));
 
 describe("ManageSourcesPage", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(createSource).mockImplementation(async (input) => ({ ...input, id: "s-new" }));
+    vi.mocked(updateSource).mockImplementation(async (id, input) => ({ ...input, id }));
+    vi.mocked(deleteSource).mockResolvedValue();
+  });
+
   it("lists the available sources", () => {
     renderWithProviders(<ManageSourcesPage />);
     const list = screen.getByRole("list", { name: "Financial sources" });
@@ -46,7 +62,7 @@ describe("ManageSourcesPage", () => {
     const user = userEvent.setup();
     renderWithProviders(<ManageSourcesPage />);
     await user.click(screen.getByRole("button", { name: "Edit" }));
-    await user.click(screen.getByRole("button", { name: "Edit Cash" }));
+    await user.click(screen.getByRole("button", { name: "Edit HDFC Bank" }));
     const balance = screen.getByRole("textbox", { name: "Current balance (₹)" });
     await user.clear(balance);
     await user.type(balance, "100");
@@ -78,16 +94,40 @@ describe("ManageSourcesPage", () => {
     renderWithProviders(<ManageSourcesPage />);
     expect(screen.queryByRole("button", { name: /^(Edit|Delete) .+/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Edit" }));
-    expect(screen.getAllByRole("button", { name: /^Edit .+/ })).toHaveLength(4);
+    expect(screen.getAllByRole("button", { name: /^Edit (HDFC Bank|HDFC Regalia|Home Loan)$/ })).toHaveLength(3);
     expect(screen.getAllByRole("button", { name: /^Delete .+/ })).toHaveLength(3);
     await user.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("button", { name: /^(Edit|Delete) .+/ })).not.toBeInTheDocument();
   });
 
-  it("cannot delete cash", async () => {
+  it("allows editing only the cash balance without a delete action", async () => {
     const user = userEvent.setup();
     renderWithProviders(<ManageSourcesPage />);
     await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.queryByRole("button", { name: "Edit Cash" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Delete Cash" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Edit cash balance" }));
+    const balance = screen.getByRole("textbox", { name: "Current balance (₹)" });
+    await user.clear(balance);
+    await user.type(balance, "20000");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(updateSource).toHaveBeenCalledWith("s-3", { type: "cash", name: "Cash", balance: 20000 });
+    expect(screen.getByText("₹20,000")).toBeInTheDocument();
+  });
+
+  it("creates the default cash source when the backend has none", async () => {
+    vi.mocked(createSource).mockResolvedValue({ id: "cash-default", type: "cash", name: "Cash", balance: 0 });
+    vi.mocked(getSources).mockResolvedValue([]);
+
+    renderWithProviders(<ManageSourcesPage />, { initialSources: null });
+    const list = await screen.findByRole("list", { name: "Financial sources" });
+    expect(await within(list).findByText("Cash")).toBeInTheDocument();
+    expect(createSource).toHaveBeenCalledWith({ type: "cash", name: "Cash", balance: 0 });
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.queryByRole("button", { name: "Edit Cash" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Delete Cash" })).not.toBeInTheDocument();
   });
 });

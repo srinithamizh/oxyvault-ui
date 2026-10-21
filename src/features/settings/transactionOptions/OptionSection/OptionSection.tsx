@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FiCheck, FiEdit2, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiCheck, FiEdit2, FiPlus, FiRefreshCw, FiTrash2 } from "react-icons/fi";
 import Badge from "@/components/Badge/Badge";
 import Button from "@/components/Button/Button";
 import Card from "@/components/Card/Card";
@@ -18,15 +18,27 @@ export interface OptionItem extends OptionValue {
 export interface OptionSectionProps {
   variant: OptionVariant;
   items: OptionItem[];
-  onAdd: (value: OptionValue) => void;
-  onUpdate: (id: string, value: OptionValue) => void;
-  onRemove: (id: string) => void;
+  onAdd: (value: OptionValue) => void | Promise<void>;
+  onUpdate: (id: string, value: OptionValue) => void | Promise<void>;
+  onRemove: (id: string) => void | Promise<void>;
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 type Dialog = { kind: "add" } | { kind: "edit"; item: OptionItem } | { kind: "delete"; item: OptionItem } | null;
 
 /** A titled list of payment methods or categories with an Edit mode, like Manage Sources. */
-export default function OptionSection({ variant, items, onAdd, onUpdate, onRemove }: OptionSectionProps) {
+export default function OptionSection({
+  variant,
+  items,
+  onAdd,
+  onUpdate,
+  onRemove,
+  loading = false,
+  error = null,
+  onRetry,
+}: OptionSectionProps) {
   const { t } = useTranslation();
   const titleId = useId();
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -63,7 +75,20 @@ export default function OptionSection({ variant, items, onAdd, onUpdate, onRemov
         </div>
       </div>
 
-      {items.length === 0 ? (
+      {error && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-danger-soft px-3 py-2.5">
+          <p role="alert" className="text-[11px] text-danger">{error}</p>
+          {onRetry && (
+            <Button variant="secondary" icon={FiRefreshCw} onClick={onRetry}>
+              {t("common.retry")}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {loading ? (
+        <p role="status" className="py-8 text-center text-[11px] text-muted">{t("common.loading")}</p>
+      ) : error && onRetry ? null : items.length === 0 ? (
         <p className="py-8 text-center text-[11px] text-muted">{t(`transactionOptions.${variant}.empty`)}</p>
       ) : (
         <ul aria-label={t(`transactionOptions.${variant}.listLabel`)} className="divide-y divide-border">
@@ -99,8 +124,7 @@ export default function OptionSection({ variant, items, onAdd, onUpdate, onRemov
           takenNames={takenNames()}
           onClose={close}
           onSave={(value) => {
-            onAdd(value);
-            close();
+            void Promise.resolve(onAdd(value)).then(close);
           }}
         />
       )}
@@ -111,8 +135,7 @@ export default function OptionSection({ variant, items, onAdd, onUpdate, onRemov
           takenNames={takenNames(dialog.item.id)}
           onClose={close}
           onSave={(value) => {
-            onUpdate(dialog.item.id, value);
-            close();
+            void Promise.resolve(onUpdate(dialog.item.id, value)).then(close);
           }}
         />
       )}
@@ -121,8 +144,7 @@ export default function OptionSection({ variant, items, onAdd, onUpdate, onRemov
           name={dialog.item.name}
           onCancel={close}
           onConfirm={() => {
-            onRemove(dialog.item.id);
-            close();
+            void Promise.resolve(onRemove(dialog.item.id)).then(close);
           }}
         />
       )}

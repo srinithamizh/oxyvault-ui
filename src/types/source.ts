@@ -8,23 +8,23 @@ interface SourceBase {
 
 export interface BankSource extends SourceBase {
   type: "bank";
-  accountType: BankAccountType;
+  accountType?: BankAccountType;
   /** Only the last four digits are stored, to avoid keeping personal data. */
-  lastFour: string;
+  lastFour?: string;
   balance: number;
 }
 
 export interface CardSource extends SourceBase {
   type: "card";
   /** Only the last four digits of the card number. */
-  lastFour: string;
+  lastFour?: string;
   /** Total credit limit. */
-  creditLimit: number;
+  creditLimit?: number;
   /** Amount currently owed on the card. */
   balance: number;
 }
 
-/** There is a single cash source; only its balance is editable. */
+/** Cash sources are shared and cannot be edited or deleted. */
 export interface CashSource extends SourceBase {
   type: "cash";
   balance: number;
@@ -32,11 +32,11 @@ export interface CashSource extends SourceBase {
 
 export interface LoanSource extends SourceBase {
   type: "loan";
-  provider: string;
+  provider?: string;
   /** Monthly instalment. */
-  emi: number;
+  emi?: number;
   /** Annual rate in percent. */
-  interestRate: number;
+  interestRate?: number;
   /** Outstanding principal. */
   balance: number;
 }

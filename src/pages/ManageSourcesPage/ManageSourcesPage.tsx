@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FiCheck, FiEdit2, FiPlus } from "react-icons/fi";
+import { FiCheck, FiEdit2, FiPlus, FiRefreshCw } from "react-icons/fi";
 import Button from "@/components/Button/Button";
 import Card from "@/components/Card/Card";
 import DeleteSourceDialog from "@/features/settings/sources/DeleteSourceDialog/DeleteSourceDialog";
@@ -13,11 +13,11 @@ type Dialog = { kind: "add" } | { kind: "edit"; source: Source } | { kind: "dele
 
 export default function ManageSourcesPage() {
   const { t } = useTranslation();
-  const { sources, addSource, updateSource, removeSource } = useSources();
+  const { sources, loading, error, reloadSources, addSource, updateSource, removeSource } = useSources();
   const [dialog, setDialog] = useState<Dialog>(null);
   const [editing, setEditing] = useState(false);
   const close = () => setDialog(null);
-  // Cash is the default source, so it always comes first.
+  // Keep a cash source first when one exists.
   const ordered = [...sources].sort((a, b) => Number(b.type === "cash") - Number(a.type === "cash"));
 
   return (
@@ -39,7 +39,20 @@ export default function ManageSourcesPage() {
         </div>
       </div>
 
-      {sources.length === 0 ? (
+      {error && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-danger-soft px-3 py-2.5">
+          <p role="alert" className="text-[11px] text-danger">{t(error === "load" ? "sources.loadError" : "sources.mutationError")}</p>
+          {error === "load" && (
+            <Button variant="secondary" icon={FiRefreshCw} onClick={() => void reloadSources()}>
+              {t("common.retry")}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {loading ? (
+        <p role="status" className="py-8 text-center text-[11px] text-muted">{t("common.loading")}</p>
+      ) : error === "load" ? null : sources.length === 0 ? (
         <p className="py-8 text-center text-[11px] text-muted">{t("sources.empty")}</p>
       ) : (
         <ul aria-label={t("sources.listLabel")} className="divide-y divide-border">
@@ -58,9 +71,9 @@ export default function ManageSourcesPage() {
       {dialog?.kind === "add" && (
         <SourceFormModal
           onClose={close}
-          onSave={(input) => {
-            addSource(input);
-            close();
+          error={error === "mutation" ? t("sources.mutationError") : null}
+          onSave={async (input) => {
+            if (await addSource(input)) close();
           }}
         />
       )}
@@ -68,9 +81,9 @@ export default function ManageSourcesPage() {
         <SourceFormModal
           source={dialog.source}
           onClose={close}
-          onSave={(input) => {
-            updateSource(dialog.source.id, input);
-            close();
+          error={error === "mutation" ? t("sources.mutationError") : null}
+          onSave={async (input) => {
+            if (await updateSource(dialog.source.id, input)) close();
           }}
         />
       )}
@@ -78,9 +91,9 @@ export default function ManageSourcesPage() {
         <DeleteSourceDialog
           name={dialog.source.name}
           onCancel={close}
-          onConfirm={() => {
-            removeSource(dialog.source.id);
-            close();
+          error={error === "mutation" ? t("sources.mutationError") : null}
+          onConfirm={async () => {
+            if (await removeSource(dialog.source.id)) close();
           }}
         />
       )}

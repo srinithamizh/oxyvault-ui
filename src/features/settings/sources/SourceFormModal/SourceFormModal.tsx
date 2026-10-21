@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { FiRefreshCw } from "react-icons/fi";
 import Button from "@/components/Button/Button";
 import Modal from "@/components/Modal/Modal";
 import SegmentedControl from "@/components/SegmentedControl/SegmentedControl";
@@ -19,11 +20,11 @@ import type { Source, SourceInput, SourceType } from "@/types/source";
 export interface SourceFormModalProps {
   /** The source being edited; omit to add a new one. */
   source?: Source;
-  onSave: (input: SourceInput) => void;
+  onSave: (input: SourceInput) => void | boolean | Promise<void | boolean>;
   onClose: () => void;
+  error?: string | null;
 }
 
-/** Cash exists by default and is only ever edited, so it is not offered when adding. */
 const ADDABLE_TYPES = SOURCE_TYPES.filter(({ type }) => type !== "cash");
 
 type TextDraftField = Exclude<DraftField, "accountType">;
@@ -38,12 +39,13 @@ const TEXT_FIELD_PROPS: Record<TextDraftField, { inputMode?: "decimal" | "numeri
   interestRate: { inputMode: "decimal", autoComplete: "off" },
 };
 
-export default function SourceFormModal({ source, onSave, onClose }: SourceFormModalProps) {
+export default function SourceFormModal({ source, onSave, onClose, error }: SourceFormModalProps) {
   const { t } = useTranslation();
   const editing = source !== undefined;
   const [type, setType] = useState<SourceType>(source?.type ?? "bank");
   const [draft, setDraft] = useState<SourceDraft>(source ? draftFromSource(source) : emptyDraft("bank"));
   const [errors, setErrors] = useState<FieldErrors<DraftField>>({});
+  const [saving, setSaving] = useState(false);
 
   const chooseType = (next: SourceType) => {
     setType(next);
@@ -56,11 +58,19 @@ export default function SourceFormModal({ source, onSave, onClose }: SourceFormM
     setErrors((current) => ({ ...current, [field]: undefined }));
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (saving) return;
     const result = validateDraft(type, draft, t);
     setErrors(result.errors);
-    if (result.input) onSave(result.input);
+    if (result.input) {
+      setSaving(true);
+      try {
+        await onSave(result.input);
+      } finally {
+        setSaving(false);
+      }
+    }
   };
 
   const labelFor = (field: DraftField): string => {
@@ -114,7 +124,7 @@ export default function SourceFormModal({ source, onSave, onClose }: SourceFormM
         {!editing && (
           <fieldset className="min-w-0">
             <legend className="mb-2 text-xs font-semibold text-muted">{t("sources.form.typeLegend")}</legend>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {ADDABLE_TYPES.map(({ type: optionType, labelKey, icon: Icon }) => {
                 const selected = type === optionType;
                 return (
@@ -142,8 +152,6 @@ export default function SourceFormModal({ source, onSave, onClose }: SourceFormM
           </fieldset>
         )}
 
-        {type === "cash" && <p className="text-[11px] text-muted">{t("sources.form.cashHint")}</p>}
-
         <div className="grid grid-cols-2 gap-x-3 gap-y-4 max-[520px]:grid-cols-1">
           {FIELDS_BY_TYPE[type].map((field) => (
             <div key={field} className={field === "name" || (field === "balance" && type === "cash") ? "col-span-full" : ""}>
@@ -152,11 +160,15 @@ export default function SourceFormModal({ source, onSave, onClose }: SourceFormM
           ))}
         </div>
 
+        {error && <p role="alert" className="text-[11px] text-danger">{error}</p>}
+
         <div className="mt-1 flex justify-end gap-2 border-t border-border pt-[15px]">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
             {t("common.cancel")}
           </Button>
-          <Button type="submit">{t(editing ? "sources.form.save" : "sources.form.add")}</Button>
+          <Button type="submit" disabled={saving} icon={saving ? FiRefreshCw : undefined}>
+            {t(saving ? "common.loading" : editing ? "sources.form.save" : "sources.form.add")}
+          </Button>
         </div>
       </form>
     </Modal>

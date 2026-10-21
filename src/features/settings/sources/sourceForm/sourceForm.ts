@@ -35,17 +35,27 @@ export function draftFromSource(source: Source): SourceDraft {
   const draft = { ...emptyDraft(source.type), name: source.name };
   switch (source.type) {
     case "bank":
-      return { ...draft, accountType: source.accountType, lastFour: source.lastFour, balance: String(source.balance) };
+      return {
+        ...draft,
+        accountType: source.accountType ?? "savings",
+        lastFour: source.lastFour ?? "",
+        balance: String(source.balance),
+      };
     case "card":
-      return { ...draft, lastFour: source.lastFour, creditLimit: String(source.creditLimit), balance: String(source.balance) };
+      return {
+        ...draft,
+        lastFour: source.lastFour ?? "",
+        creditLimit: source.creditLimit === undefined ? "" : String(source.creditLimit),
+        balance: String(source.balance),
+      };
     case "cash":
       return { ...draft, balance: String(source.balance) };
     case "loan":
       return {
         ...draft,
-        provider: source.provider,
-        emi: String(source.emi),
-        interestRate: String(source.interestRate),
+        provider: source.provider ?? "",
+        emi: source.emi === undefined ? "" : String(source.emi),
+        interestRate: source.interestRate === undefined ? "" : String(source.interestRate),
         balance: String(source.balance),
       };
   }
@@ -77,17 +87,18 @@ export function validateDraft(type: SourceType, draft: SourceDraft, t: TFunction
   const required = (field: DraftField, message: string) => {
     if (!draft[field].trim()) errors[field] = message;
   };
-  const amount = (field: "balance" | "emi" | "creditLimit", { positive = false } = {}) => {
+  const amount = (field: "balance" | "emi" | "creditLimit", { optional = false } = {}) => {
+    if (optional && !draft[field].trim()) return;
     const value = parseAmount(draft[field]);
     if (Number.isNaN(value)) errors[field] = t("sources.errors.amountInvalid");
-    else if (value < 0 || (positive && value === 0)) errors[field] = t("sources.errors.amountPositive");
+    else if (value < 0) errors[field] = t("sources.errors.amountPositive");
   };
 
   if (type === "bank" || type === "card" || type === "loan") {
     required("name", t(`sources.errors.${type}NameRequired`));
   }
   const checkLastFour = () => {
-    if (!LAST_FOUR.test(draft.lastFour.trim())) errors.lastFour = t("sources.errors.lastFourInvalid");
+    if (draft.lastFour.trim() && !LAST_FOUR.test(draft.lastFour.trim())) errors.lastFour = t("sources.errors.lastFourInvalid");
   };
 
   if (type === "bank") {
@@ -96,15 +107,16 @@ export function validateDraft(type: SourceType, draft: SourceDraft, t: TFunction
   }
   if (type === "card") {
     checkLastFour();
-    amount("creditLimit", { positive: true });
+    amount("creditLimit", { optional: true });
     amount("balance");
   }
   if (type === "cash") amount("balance");
   if (type === "loan") {
-    required("provider", t("sources.errors.providerRequired"));
-    amount("emi", { positive: true });
-    const rate = parseAmount(draft.interestRate);
-    if (Number.isNaN(rate) || rate < 0 || rate > 100) errors.interestRate = t("sources.errors.interestRateInvalid");
+    amount("emi", { optional: true });
+    if (draft.interestRate.trim()) {
+      const rate = parseAmount(draft.interestRate);
+      if (Number.isNaN(rate) || rate < 0) errors.interestRate = t("sources.errors.interestRateInvalid");
+    }
     amount("balance");
   }
 
@@ -118,13 +130,22 @@ export function validateDraft(type: SourceType, draft: SourceDraft, t: TFunction
         input: {
           type,
           name,
-          accountType: draft.accountType,
-          lastFour: draft.lastFour.trim(),
           balance: parseAmount(draft.balance),
+          ...(draft.accountType ? { accountType: draft.accountType } : {}),
+          ...(draft.lastFour.trim() ? { lastFour: draft.lastFour.trim() } : {}),
         },
       };
     case "card":
-      return { errors, input: { type, name, lastFour: draft.lastFour.trim(), creditLimit: parseAmount(draft.creditLimit), balance: parseAmount(draft.balance) } };
+      return {
+        errors,
+        input: {
+          type,
+          name,
+          balance: parseAmount(draft.balance),
+          ...(draft.lastFour.trim() ? { lastFour: draft.lastFour.trim() } : {}),
+          ...(draft.creditLimit.trim() ? { creditLimit: parseAmount(draft.creditLimit) } : {}),
+        },
+      };
     case "cash":
       return { errors, input: { type, name: CASH_NAME, balance: parseAmount(draft.balance) } };
     case "loan":
@@ -133,10 +154,10 @@ export function validateDraft(type: SourceType, draft: SourceDraft, t: TFunction
         input: {
           type,
           name,
-          provider: draft.provider.trim(),
-          emi: parseAmount(draft.emi),
-          interestRate: parseAmount(draft.interestRate),
           balance: parseAmount(draft.balance),
+          ...(draft.provider.trim() ? { provider: draft.provider.trim() } : {}),
+          ...(draft.emi.trim() ? { emi: parseAmount(draft.emi) } : {}),
+          ...(draft.interestRate.trim() ? { interestRate: parseAmount(draft.interestRate) } : {}),
         },
       };
   }

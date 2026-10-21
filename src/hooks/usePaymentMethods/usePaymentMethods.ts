@@ -3,9 +3,12 @@ import type { PaymentMethod, PaymentMethodInput } from "@/types/transactionOptio
 
 export interface PaymentMethodsContextValue {
   methods: PaymentMethod[];
-  addMethod: (input: PaymentMethodInput) => void;
-  updateMethod: (id: string, input: PaymentMethodInput) => void;
-  removeMethod: (id: string) => void;
+  loading: boolean;
+  error: "load" | "mutation" | null;
+  reloadMethods: () => Promise<void>;
+  addMethod: (input: PaymentMethodInput) => Promise<void>;
+  updateMethod: (id: string, input: PaymentMethodInput) => Promise<void>;
+  removeMethod: (id: string) => Promise<void>;
 }
 
 export const PaymentMethodsContext = createContext<PaymentMethodsContextValue | null>(null);
