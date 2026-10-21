@@ -34,7 +34,7 @@ function parseUser(user: UserResponse): ManagedUser {
 }
 
 export async function getUsers(page: number, size: number): Promise<UserPage> {
-  const response = await apiRequest<UserPageResponse>("/users", {
+  const response = await apiRequest<UserPageResponse>("/admin/users", {
     query: { page: String(page), size: String(size) },
   });
 
@@ -55,7 +55,7 @@ export async function getUsers(page: number, size: number): Promise<UserPage> {
 }
 
 export async function updateUserRole(id: string, role: UserRole): Promise<void> {
-  await apiRequest<void>(`/users/${encodeURIComponent(id)}`, {
+  await apiRequest<void>(`/admin/users/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: { role: role.toUpperCase() },
   });
