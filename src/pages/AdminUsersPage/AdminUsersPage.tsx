@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { FiCheck, FiChevronDown, FiChevronLeft, FiChevronRight, FiEdit2, FiInfo, FiRefreshCw } from "react-icons/fi";
@@ -7,6 +8,7 @@ import Card from "@/components/Card/Card";
 import IconButton from "@/components/IconButton/IconButton";
 import { useAuth } from "@/hooks/useAuth/useAuth";
 import { getUsers, updateUserRole, type ManagedUser, type UserPage } from "@/services/usersService/usersService";
+import { queryKeys } from "@/data/queryClient";
 import { UserRole } from "@/types/user";
 
 const PAGE_SIZE = 20;
@@ -142,53 +144,46 @@ function RoleDropdown({ name, role, disabled, onChange }: RoleDropdownProps) {
 export default function AdminUsersPage() {
   const { t } = useTranslation();
   const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<ManagedUser[]>([]);
-  const [page, setPage] = useState<UserPage | null>(null);
   const [pageNumber, setPageNumber] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
-  const [updateError, setUpdateError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const queryClient = useQueryClient();
+  const usersQuery = useQuery({
+    queryKey: queryKeys.adminUsers(pageNumber, PAGE_SIZE),
+    queryFn: () => getUsers(pageNumber, PAGE_SIZE),
+    staleTime: Infinity,
+    meta: { requiresAuth: true },
+  });
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ id, role }: { id: string; role: UserRole }) => updateUserRole(id, role),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["adminUsers"] }),
+    meta: { requiresAuth: true },
+  });
+  const users = usersQuery.data?.content ?? [];
+  const page: UserPage | null = usersQuery.data ?? null;
+  const loading = usersQuery.isFetching;
+  const error = usersQuery.isError;
+  const updatingUserId = updateRoleMutation.isPending ? updateRoleMutation.variables?.id ?? null : null;
+  const updateError = updateRoleMutation.isError ? t("adminUsers.roleUpdateError") : null;
 
   useEffect(() => {
-    const controller = new AbortController();
-    getUsers(pageNumber, PAGE_SIZE)
-      .then((result) => {
-        if (controller.signal.aborted) return;
-        setUsers(result.content);
-        setPage(result);
-      })
-      .catch((cause: unknown) => {
-        if (controller.signal.aborted) return;
-        setError(true);
-        console.error("Could not load users.", cause instanceof Error ? cause.message : "Unexpected error");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [pageNumber, retryCount]);
+    if (usersQuery.error) {
+      console.error(
+        "Could not load users.",
+        usersQuery.error instanceof Error ? usersQuery.error.message : "Unexpected error",
+      );
+    }
+  }, [usersQuery.error]);
 
   const changeRole = async (managedUser: ManagedUser, role: UserRole) => {
     if (managedUser.id === currentUser?.id || managedUser.role === role) return;
-    setUpdatingUserId(managedUser.id);
-    setUpdateError(null);
     try {
-      await updateUserRole(managedUser.id, role);
-      setUsers((current) => current.map((item) => (item.id === managedUser.id ? { ...item, role } : item)));
+      await updateRoleMutation.mutateAsync({ id: managedUser.id, role });
     } catch (cause) {
-      setUpdateError(t("adminUsers.roleUpdateError"));
       console.error("Could not update user role.", cause instanceof Error ? cause.message : "Unexpected error");
-    } finally {
-      setUpdatingUserId(null);
     }
   };
 
   const goToPage = (nextPage: number) => {
-    setError(false);
-    setLoading(true);
     setPageNumber(nextPage);
   };
 
@@ -219,11 +214,7 @@ export default function AdminUsersPage() {
             <Button
               variant="secondary"
               icon={FiRefreshCw}
-              onClick={() => {
-                setError(false);
-                setLoading(true);
-                setRetryCount((count) => count + 1);
-              }}
+              onClick={() => void usersQuery.refetch()}
             >
               {t("common.retry")}
             </Button>

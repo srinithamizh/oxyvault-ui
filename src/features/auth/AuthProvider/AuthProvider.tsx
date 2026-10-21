@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuthContext, type AuthContextValue } from "@/hooks/useAuth/useAuth";
 import { setUnauthorizedHandler } from "@/services/apiClient/apiClient";
 import {
@@ -11,6 +12,7 @@ import {
   type RegisterInput,
 } from "@/services/authService/authService";
 import { clearAccessToken, getAccessToken, setAccessToken } from "@/services/tokenStore/tokenStore";
+import { queryKeys } from "@/data/queryClient";
 
 export interface AuthProviderProps {
   children: ReactNode;
@@ -19,21 +21,58 @@ export interface AuthProviderProps {
 }
 
 export default function AuthProvider({ children, initialUser }: AuthProviderProps) {
-  const [user, setUser] = useState<AuthUser | null>(initialUser ?? null);
-  const [isInitializing, setIsInitializing] = useState(initialUser === undefined && Boolean(getAccessToken()));
+  const queryClient = useQueryClient();
+  const currentUserQuery = useQuery({
+    queryKey: queryKeys.currentUser,
+    queryFn: async () => {
+      try {
+        return await loadCurrentUser();
+      } catch (error) {
+        clearAccessToken();
+        console.error(
+          "Could not restore the saved session.",
+          error instanceof Error ? error.message : "Unexpected error",
+        );
+        throw error;
+      }
+    },
+    enabled: initialUser === undefined && Boolean(getAccessToken()),
+    staleTime: Infinity,
+    initialData: initialUser ?? undefined,
+    meta: { requiresAuth: true },
+  });
 
   const clearSession = useCallback(() => {
     clearAccessToken();
-    setUser(null);
-  }, []);
+    queryClient.removeQueries({
+      predicate: (query) => query.meta?.requiresAuth === true && query.queryKey[0] !== "auth",
+    });
+    queryClient.setQueryData<AuthUser | null>(queryKeys.currentUser, null);
+  }, [queryClient]);
+
+  const loginMutation = useMutation({ mutationFn: loginRequest });
+  const registerMutation = useMutation({ mutationFn: registerRequest });
+  const logoutMutation = useMutation({ mutationFn: logoutRequest });
+
+  const login = useCallback(async (input: LoginInput) => {
+    const session = await loginMutation.mutateAsync(input);
+    queryClient.removeQueries({
+      predicate: (query) => query.meta?.requiresAuth === true && query.queryKey[0] !== "auth",
+    });
+    setAccessToken(session.accessToken);
+    queryClient.setQueryData<AuthUser | null>(queryKeys.currentUser, session.user);
+    return session.user;
+  }, [loginMutation, queryClient]);
+
+  const register = useCallback((input: RegisterInput) => registerMutation.mutateAsync(input), [registerMutation]);
 
   const logout = useCallback(async () => {
     try {
-      await logoutRequest();
+      await logoutMutation.mutateAsync();
     } finally {
       clearSession();
     }
-  }, [clearSession]);
+  }, [clearSession, logoutMutation]);
 
   // The backend rejected our token (expired or revoked): drop the session so the route guard shows /login.
   useEffect(() => {
@@ -41,39 +80,8 @@ export default function AuthProvider({ children, initialUser }: AuthProviderProp
     return () => setUnauthorizedHandler(null);
   }, [clearSession]);
 
-  useEffect(() => {
-    if (initialUser !== undefined || !getAccessToken()) return;
-
-    let active = true;
-    loadCurrentUser()
-      .then((currentUser) => {
-        if (active) setUser(currentUser);
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        clearSession();
-        console.error(
-          "Could not restore the saved session.",
-          error instanceof Error ? error.message : "Unexpected error",
-        );
-      })
-      .finally(() => {
-        if (active) setIsInitializing(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [clearSession, initialUser]);
-
-  const login = useCallback(async (input: LoginInput) => {
-    const session = await loginRequest(input);
-    setAccessToken(session.accessToken);
-    setUser(session.user);
-    return session.user;
-  }, []);
-
-  const register = useCallback((input: RegisterInput) => registerRequest(input), []);
+  const isInitializing = initialUser === undefined && Boolean(getAccessToken()) && currentUserQuery.isPending;
+  const user: AuthUser | null = currentUserQuery.data ?? null;
 
   const value = useMemo<AuthContextValue>(
     () => ({ user, isInitializing, login, register, logout }),

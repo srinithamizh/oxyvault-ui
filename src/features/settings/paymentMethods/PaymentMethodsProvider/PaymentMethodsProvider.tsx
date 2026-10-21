@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth/useAuth";
 import {
   PaymentMethodsContext,
@@ -9,138 +10,113 @@ import {
   getPaymentMethods,
   updatePaymentMethod,
   deletePaymentMethod,
-  clearPaymentMethodsCache,
 } from "@/services/paymentMethodsService/paymentMethodsService";
+import { queryKeys } from "@/data/queryClient";
+import { getAccessToken } from "@/services/tokenStore/tokenStore";
 import type { PaymentMethod, PaymentMethodInput } from "@/types/transactionOptions";
 
 export default function PaymentMethodsProvider({
   children,
   initialMethods,
+  shouldLoad = true,
 }: {
   children: ReactNode;
   initialMethods?: PaymentMethod[];
+  shouldLoad?: boolean;
 }) {
   const { user, isInitializing } = useAuth();
-  const [methods, setMethods] = useState<PaymentMethod[]>(initialMethods ?? []);
-  const [loadedUserId, setLoadedUserId] = useState<string | null>(
-    initialMethods === undefined ? null : user?.id ?? null,
-  );
-  const [loading, setLoading] = useState(initialMethods === undefined && (isInitializing || user !== null));
-  const [errorState, setErrorState] = useState<{ userId: string | null; type: "load" | "mutation" } | null>(null);
-  const methodsVersion = useRef(0);
-  const error = errorState?.userId === (user?.id ?? null) ? errorState.type : null;
-  const isLoading =
-    initialMethods === undefined &&
-    ((isInitializing && loading) ||
-      (user !== null && (loading || (loadedUserId !== user.id && errorState?.userId !== user.id))));
+  const queryClient = useQueryClient();
+  const queryKey = queryKeys.paymentMethods(user?.id ?? "anonymous");
+  const methodsQuery = useQuery({
+    queryKey,
+    queryFn: getPaymentMethods,
+    enabled: shouldLoad && !isInitializing && user !== null && Boolean(getAccessToken()),
+    staleTime: Infinity,
+    initialData: initialMethods,
+    meta: { requiresAuth: true },
+  });
 
-  const reloadMethods = useCallback(async () => {
-    if (!user) return;
-    const requestVersion = ++methodsVersion.current;
-    setLoading(true);
-    setErrorState(null);
-    try {
-      const result = await getPaymentMethods();
-      if (requestVersion === methodsVersion.current) {
-        setMethods(result);
-        setLoadedUserId(user.id);
-        setErrorState(null);
-      }
-    } catch (cause) {
-      if (requestVersion === methodsVersion.current) {
-        setErrorState({ userId: user.id, type: "load" });
-        console.error("Could not load payment methods.", cause instanceof Error ? cause.message : "Unexpected error");
-      }
-    } finally {
-      if (requestVersion === methodsVersion.current) setLoading(false);
-    }
-  }, [user]);
+  const createMutation = useMutation({
+    mutationFn: createPaymentMethod,
+    onSuccess: (created) => {
+      queryClient.setQueryData<PaymentMethod[]>(queryKey, (current) => [...(current ?? []), created]);
+      return queryClient.invalidateQueries({ queryKey });
+    },
+  });
+  const updateMutation = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: PaymentMethodInput }) => updatePaymentMethod(id, input),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<PaymentMethod[]>(queryKey, (current) =>
+        current?.map((method) => (method.id === updated.id ? updated : method)),
+      );
+      return queryClient.invalidateQueries({ queryKey });
+    },
+  });
+  const deleteMutation = useMutation({
+    mutationFn: deletePaymentMethod,
+    onSuccess: (_result, id) => {
+      queryClient.setQueryData<PaymentMethod[]>(queryKey, (current) => current?.filter((method) => method.id !== id));
+      return queryClient.invalidateQueries({ queryKey });
+    },
+  });
+  const mutationFailed = createMutation.isError || updateMutation.isError || deleteMutation.isError;
+  const error = methodsQuery.isError ? "load" : mutationFailed ? "mutation" : null;
 
   useEffect(() => {
-    if (initialMethods !== undefined || isInitializing) return;
-    if (!user) {
-      methodsVersion.current += 1;
-      clearPaymentMethodsCache();
-      return;
+    if (methodsQuery.error) {
+      console.error(
+        "Could not load payment methods.",
+        methodsQuery.error instanceof Error ? methodsQuery.error.message : "Unexpected error",
+      );
     }
+  }, [methodsQuery.error]);
 
-    let active = true;
-    const requestVersion = ++methodsVersion.current;
-    getPaymentMethods()
-      .then((result) => {
-        if (active && requestVersion === methodsVersion.current) {
-          setMethods(result);
-          setLoadedUserId(user.id);
-          setErrorState(null);
-        }
-      })
-      .catch((cause: unknown) => {
-        if (!active || requestVersion !== methodsVersion.current) return;
-        setErrorState({ userId: user.id, type: "load" });
-        console.error("Could not load payment methods.", cause instanceof Error ? cause.message : "Unexpected error");
-      })
-      .finally(() => {
-        if (active && requestVersion === methodsVersion.current) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [initialMethods, isInitializing, user]);
+  const resetMutationErrors = () => {
+    createMutation.reset();
+    updateMutation.reset();
+    deleteMutation.reset();
+  };
 
-  const addMethod = useCallback(async (input: PaymentMethodInput) => {
-    setErrorState(null);
+  const reloadMethods = async () => {
+    await methodsQuery.refetch();
+  };
+
+  const addMethod = async (input: PaymentMethodInput) => {
+    resetMutationErrors();
     try {
-      const created = await createPaymentMethod(input);
-      methodsVersion.current += 1;
-      setMethods((current) => [...current, created]);
-      setLoadedUserId(user?.id ?? null);
-      setLoading(false);
+      await createMutation.mutateAsync(input);
     } catch (cause) {
-      setErrorState({ userId: user?.id ?? null, type: "mutation" });
       console.error("Could not create payment method.", cause instanceof Error ? cause.message : "Unexpected error");
     }
-  }, [user]);
+  };
 
-  const updateMethod = useCallback(async (id: string, input: PaymentMethodInput) => {
-    setErrorState(null);
+  const updateMethod = async (id: string, input: PaymentMethodInput) => {
+    resetMutationErrors();
     try {
-      const updated = await updatePaymentMethod(id, input);
-      methodsVersion.current += 1;
-      setMethods((current) => current.map((item) => (item.id === id ? updated : item)));
-      setLoadedUserId(user?.id ?? null);
-      setLoading(false);
+      await updateMutation.mutateAsync({ id, input });
     } catch (cause) {
-      setErrorState({ userId: user?.id ?? null, type: "mutation" });
       console.error("Could not update payment method.", cause instanceof Error ? cause.message : "Unexpected error");
     }
-  }, [user]);
+  };
 
-  const removeMethod = useCallback(async (id: string) => {
-    setErrorState(null);
+  const removeMethod = async (id: string) => {
+    resetMutationErrors();
     try {
-      await deletePaymentMethod(id);
-      methodsVersion.current += 1;
-      setMethods((current) => current.filter((item) => item.id !== id));
-      setLoadedUserId(user?.id ?? null);
-      setLoading(false);
+      await deleteMutation.mutateAsync(id);
     } catch (cause) {
-      setErrorState({ userId: user?.id ?? null, type: "mutation" });
       console.error("Could not delete payment method.", cause instanceof Error ? cause.message : "Unexpected error");
     }
-  }, [user]);
+  };
 
-  const value = useMemo<PaymentMethodsContextValue>(
-    () => ({
-      methods: initialMethods !== undefined || (user !== null && loadedUserId === user.id) ? methods : [],
-      loading: isLoading,
-      error,
-      reloadMethods,
-      addMethod,
-      updateMethod,
-      removeMethod,
-    }),
-    [methods, initialMethods, user, loadedUserId, isLoading, error, reloadMethods, addMethod, updateMethod, removeMethod],
-  );
+  const value: PaymentMethodsContextValue = {
+    methods: methodsQuery.data ?? initialMethods ?? [],
+    loading: (user !== null && (isInitializing || methodsQuery.isFetching)) && initialMethods === undefined,
+    error,
+    reloadMethods,
+    addMethod,
+    updateMethod,
+    removeMethod,
+  };
 
   return <PaymentMethodsContext.Provider value={value}>{children}</PaymentMethodsContext.Provider>;
 }

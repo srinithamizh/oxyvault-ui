@@ -3,21 +3,36 @@ import userEvent from "@testing-library/user-event";
 import ManageSourcesPage from "./ManageSourcesPage";
 import { renderWithProviders } from "@/test/renderWithProviders";
 import { createSource, deleteSource, getSources, updateSource } from "@/services/sourcesService/sourcesService";
+import { testSources } from "@/test/fixtures/sources";
+import { setAccessToken } from "@/services/tokenStore/tokenStore";
 
 vi.mock("@/services/sourcesService/sourcesService", () => ({
   getSources: vi.fn(),
   createSource: vi.fn(),
   updateSource: vi.fn(),
   deleteSource: vi.fn(),
-  clearSourcesCache: vi.fn(),
 }));
+
+let sourcesOnServer = testSources;
 
 describe("ManageSourcesPage", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(createSource).mockImplementation(async (input) => ({ ...input, id: "s-new" }));
-    vi.mocked(updateSource).mockImplementation(async (id, input) => ({ ...input, id }));
-    vi.mocked(deleteSource).mockResolvedValue();
+    sourcesOnServer = [...testSources];
+    vi.mocked(getSources).mockImplementation(async () => sourcesOnServer);
+    vi.mocked(createSource).mockImplementation(async (input) => {
+      const created = { ...input, id: "s-new" };
+      sourcesOnServer = [...sourcesOnServer, created];
+      return created;
+    });
+    vi.mocked(updateSource).mockImplementation(async (id, input) => {
+      const updated = { ...input, id };
+      sourcesOnServer = sourcesOnServer.map((source) => (source.id === id ? updated : source));
+      return updated;
+    });
+    vi.mocked(deleteSource).mockImplementation(async (id) => {
+      sourcesOnServer = sourcesOnServer.filter((source) => source.id !== id);
+    });
   });
 
   it("lists the available sources", () => {
@@ -113,18 +128,22 @@ describe("ManageSourcesPage", () => {
     await user.type(balance, "20000");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-    expect(updateSource).toHaveBeenCalledWith("s-3", { type: "cash", name: "Cash", balance: 20000 });
+    expect(vi.mocked(updateSource).mock.calls[0]?.slice(0, 2)).toEqual([
+      "s-3",
+      { type: "cash", name: "Cash", balance: 20000 },
+    ]);
     expect(screen.getByText("₹20,000")).toBeInTheDocument();
   });
 
   it("creates the default cash source when the backend has none", async () => {
+    setAccessToken("test-token");
     vi.mocked(createSource).mockResolvedValue({ id: "cash-default", type: "cash", name: "Cash", balance: 0 });
     vi.mocked(getSources).mockResolvedValue([]);
 
     renderWithProviders(<ManageSourcesPage />, { initialSources: null });
     const list = await screen.findByRole("list", { name: "Financial sources" });
     expect(await within(list).findByText("Cash")).toBeInTheDocument();
-    expect(createSource).toHaveBeenCalledWith({ type: "cash", name: "Cash", balance: 0 });
+    expect(vi.mocked(createSource).mock.calls[0]?.[0]).toEqual({ type: "cash", name: "Cash", balance: 0 });
 
     await userEvent.setup().click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.queryByRole("button", { name: "Edit Cash" })).not.toBeInTheDocument();

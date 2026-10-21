@@ -15,11 +15,6 @@ interface SourceResponse {
   interestRate?: number | null;
 }
 
-let sourcesCache: Source[] | null = null;
-let sourcesRequest: Promise<Source[]> | null = null;
-let cacheToken: string | null = null;
-let cacheVersion = 0;
-
 function parseSource(response: SourceResponse): Source {
   if (
     !response ||
@@ -99,42 +94,11 @@ function requireAccessToken() {
   if (!getAccessToken()) throw new Error("An access token is required to request sources.");
 }
 
-function ensureCacheUser() {
-  const token = getAccessToken();
-  if (token !== cacheToken) {
-    cacheVersion += 1;
-    sourcesCache = null;
-    sourcesRequest = null;
-    cacheToken = token;
-  }
-}
-
-export function clearSourcesCache() {
-  cacheVersion += 1;
-  sourcesCache = null;
-  sourcesRequest = null;
-  cacheToken = getAccessToken();
-}
-
-export function getSources(): Promise<Source[]> {
+export async function getSources(): Promise<Source[]> {
   requireAccessToken();
-  ensureCacheUser();
-  if (sourcesCache) return Promise.resolve(sourcesCache);
-  if (sourcesRequest) return sourcesRequest;
-
-  const requestVersion = cacheVersion;
-  const request = apiRequest<SourceResponse[]>("/sources", { auth: true })
-    .then((response) => {
-      if (!Array.isArray(response)) throw new Error("Unexpected response from /sources.");
-      const result = response.map(parseSource);
-      if (requestVersion === cacheVersion) sourcesCache = result;
-      return result;
-    })
-    .finally(() => {
-      if (sourcesRequest === request) sourcesRequest = null;
-    });
-  sourcesRequest = request;
-  return request;
+  const response = await apiRequest<SourceResponse[]>("/sources", { auth: true });
+  if (!Array.isArray(response)) throw new Error("Unexpected response from /sources.");
+  return response.map(parseSource);
 }
 
 export async function createSource(input: SourceInput): Promise<Source> {
@@ -144,7 +108,6 @@ export async function createSource(input: SourceInput): Promise<Source> {
     body: toRequestBody(input),
     auth: true,
   });
-  clearSourcesCache();
   return parseSource(response);
 }
 
@@ -155,12 +118,10 @@ export async function updateSource(id: string, input: SourceInput): Promise<Sour
     body: toRequestBody(input),
     auth: true,
   });
-  clearSourcesCache();
   return parseSource(response);
 }
 
 export async function deleteSource(id: string): Promise<void> {
   requireAccessToken();
   await apiRequest<void>(`/sources/${encodeURIComponent(id)}`, { method: "DELETE", auth: true });
-  clearSourcesCache();
 }

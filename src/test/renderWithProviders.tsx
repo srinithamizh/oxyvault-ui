@@ -1,5 +1,6 @@
 import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import SourcesProvider from "@/features/settings/sources/SourcesProvider/SourcesProvider";
 import PaymentMethodsProvider from "@/features/settings/paymentMethods/PaymentMethodsProvider/PaymentMethodsProvider";
@@ -13,6 +14,7 @@ import { testSources } from "@/test/fixtures/sources";
 import type { Source } from "@/types/source";
 import type { PaymentMethod } from "@/types/transactionOptions";
 import { testPaymentMethods } from "@/test/fixtures/paymentMethods";
+import { createQueryClient } from "@/data/queryClient";
 
 export const testUser: AuthUser = {
   id: "u-test",
@@ -27,7 +29,7 @@ interface RenderOptions {
   /** Signed-in user for the test. Pass `null` to start signed out. Defaults to `testUser`. */
   user?: AuthUser | null;
   /** Category fixtures for tests; defaults to an empty list without triggering an API request. */
-  initialCategories?: TransactionCategory[];
+  initialCategories?: TransactionCategory[] | null;
   /** Source fixtures for tests; defaults to test sources without triggering an API request. */
   initialSources?: Source[] | null;
   /** Payment-method fixtures for tests; defaults to test data without triggering an API request. */
@@ -44,17 +46,28 @@ export function renderWithProviders(
     initialMethods = testPaymentMethods,
   }: RenderOptions = {},
 ) {
-  return render(
-    <ThemeProvider>
-      <AuthProvider initialUser={user}>
-        <SourcesProvider initialSources={initialSources ?? undefined}>
-          <PaymentMethodsProvider initialMethods={initialMethods ?? undefined}>
-            <TransactionCategoriesProvider initialCategories={initialCategories}>
-              <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
-            </TransactionCategoriesProvider>
-          </PaymentMethodsProvider>
-        </SourcesProvider>
-      </AuthProvider>
-    </ThemeProvider>,
+  const queryClient = createQueryClient();
+  const shouldLoadSharedData = route === "/" || route === "/dashboard" || route === "/reports";
+const content =
+  user === null ? (
+    ui
+  ) : (
+    <SourcesProvider initialSources={initialSources ?? undefined} shouldLoad={shouldLoadSharedData}>
+      <PaymentMethodsProvider initialMethods={initialMethods ?? undefined} shouldLoad={shouldLoadSharedData}>
+        <TransactionCategoriesProvider
+          initialCategories={initialCategories ?? undefined}
+          shouldLoad={shouldLoadSharedData}
+        >{ui}</TransactionCategoriesProvider>
+      </PaymentMethodsProvider>
+    </SourcesProvider>
+  );
+return render(
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthProvider initialUser={user}>
+          <MemoryRouter initialEntries={[route]}>{content}</MemoryRouter>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>,
   );
 }

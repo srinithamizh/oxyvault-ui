@@ -85,7 +85,10 @@ describe("LoginPage", () => {
     await screen.findByRole("heading", { level: 1, name: "Dashboard" });
 
     expect(login).toHaveBeenCalledTimes(1);
-    expect(login).toHaveBeenCalledWith({ identifier: `  ${VALID_EMAIL}  `, password: VALID_PASSWORD });
+    expect(vi.mocked(login).mock.calls[0]?.[0]).toEqual({
+      identifier: `  ${VALID_EMAIL}  `,
+      password: VALID_PASSWORD,
+    });
   });
 
   it("does not call the service when a field is empty", async () => {

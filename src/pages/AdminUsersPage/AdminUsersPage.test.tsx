@@ -37,6 +37,10 @@ function page(number = 0) {
   };
 }
 
+function pageWithUpdatedRole(role: UserRole) {
+  return { ...page(), content: [currentAdmin, { ...otherUser, role }] };
+}
+
 describe("AdminUsersPage", () => {
   beforeEach(() => {
     vi.mocked(getUsers).mockResolvedValue(page());
@@ -85,6 +89,9 @@ describe("AdminUsersPage", () => {
 
   it("updates another user's role with the PATCH API", async () => {
     const user = userEvent.setup();
+    vi.mocked(updateUserRole).mockImplementation(async (_id, role) => {
+      vi.mocked(getUsers).mockResolvedValue(pageWithUpdatedRole(role));
+    });
     renderWithProviders(<AdminUsersPage />);
 
     await screen.findByText("Sam User");
@@ -94,7 +101,7 @@ describe("AdminUsersPage", () => {
     await user.click(screen.getByRole("option", { name: "Administrator" }));
 
     await waitFor(() => expect(updateUserRole).toHaveBeenCalledWith("user-2", UserRole.Admin));
-    expect(roleButton).toHaveTextContent("Administrator");
+    await waitFor(() => expect(roleButton).toHaveTextContent("Administrator"));
   });
 
   it("paginates using the backend page number and size", async () => {

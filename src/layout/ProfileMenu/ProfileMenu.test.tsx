@@ -1,5 +1,5 @@
 import { UserRole } from "@/types/user";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ProfileMenu from "./ProfileMenu";
 import { useAuth } from "@/hooks/useAuth/useAuth";
@@ -100,7 +100,7 @@ describe("ProfileMenu", () => {
       const user = await openLogoutDialog();
       await user.click(screen.getByRole("button", { name: "Log out" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-      expect(screen.getByTestId("session")).toHaveTextContent("signed out");
+      await waitFor(() => expect(screen.getByTestId("session")).toHaveTextContent("signed out"));
     });
   });
 });

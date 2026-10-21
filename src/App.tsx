@@ -18,13 +18,14 @@ import TransactionCategoriesPage from "@/pages/TransactionCategoriesPage/Transac
 import AppearanceSettingsPage from "@/pages/AppearanceSettingsPage/AppearanceSettingsPage";
 import AdminPage from "@/pages/AdminPage/AdminPage";
 import AdminUsersPage from "@/pages/AdminUsersPage/AdminUsersPage";
+import ReportsPage from "@/pages/ReportsPage/ReportsPage";
 
 /** Absolute on purpose: a relative target inside a splat route would be appended to the unknown path and loop. */
 const DEFAULT_SETTINGS_PATH = `${SETTINGS_PATH}/${DEFAULT_SETTINGS_SECTION}`;
 
 /** Pages that are not built yet; each is replaced by a real page in its own phase. */
 const placeholderRoutes = pageRoutes.filter(({ path }) => path !== SETTINGS_PATH);
-const openRoutes = placeholderRoutes.filter(({ roles }) => !roles);
+const openRoutes = placeholderRoutes.filter(({ roles, path }) => !roles && path !== "/reports");
 const adminRoutes = placeholderRoutes.filter(({ roles }) => roles?.includes(UserRole.Admin));
 
 const settingsPages: Record<string, ReactElement> = {
@@ -50,6 +51,7 @@ export default function App() {
           {openRoutes.map(({ labelKey, path }) => (
             <Route key={path} path={path} element={<PlaceholderPage titleKey={labelKey} />} />
           ))}
+          <Route path="/reports" element={<ReportsPage />} />
           <Route element={<RequireRole roles={[UserRole.Admin]} />}>
             <Route path="/admin" element={<AdminPage />}>
               <Route index element={<Navigate to="/admin/users" replace />} />

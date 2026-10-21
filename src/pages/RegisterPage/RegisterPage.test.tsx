@@ -154,7 +154,7 @@ describe("RegisterPage", () => {
 
     expect(await screen.findByRole("heading", { level: 1, name: "Welcome back" })).toBeInTheDocument();
     expect(register).toHaveBeenCalledTimes(1);
-    expect(register).toHaveBeenCalledWith({
+    expect(vi.mocked(register).mock.calls[0]?.[0]).toEqual({
       firstName: "Meera",
       lastName: "Nair",
       username: "meera.nair",

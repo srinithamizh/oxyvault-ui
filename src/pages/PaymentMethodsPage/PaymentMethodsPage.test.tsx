@@ -2,24 +2,42 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PaymentMethodsPage from "./PaymentMethodsPage";
 import { renderWithProviders } from "@/test/renderWithProviders";
-import { createPaymentMethod, deletePaymentMethod, updatePaymentMethod } from "@/services/paymentMethodsService/paymentMethodsService";
+import {
+  createPaymentMethod,
+  deletePaymentMethod,
+  getPaymentMethods,
+  updatePaymentMethod,
+} from "@/services/paymentMethodsService/paymentMethodsService";
+import { testPaymentMethods } from "@/test/fixtures/paymentMethods";
 
 vi.mock("@/services/paymentMethodsService/paymentMethodsService", () => ({
   getPaymentMethods: vi.fn(),
   createPaymentMethod: vi.fn(),
   updatePaymentMethod: vi.fn(),
   deletePaymentMethod: vi.fn(),
-  clearPaymentMethodsCache: vi.fn(),
 }));
 
 const list = () => screen.getByRole("list", { name: "Payment methods" });
+let methodsOnServer = testPaymentMethods;
 
 describe("PaymentMethodsPage", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(createPaymentMethod).mockImplementation(async (input) => ({ ...input, id: "m-new" }));
-    vi.mocked(updatePaymentMethod).mockImplementation(async (id, input) => ({ ...input, id }));
-    vi.mocked(deletePaymentMethod).mockResolvedValue();
+    methodsOnServer = [...testPaymentMethods];
+    vi.mocked(getPaymentMethods).mockImplementation(async () => methodsOnServer);
+    vi.mocked(createPaymentMethod).mockImplementation(async (input) => {
+      const created = { ...input, id: "m-new" };
+      methodsOnServer = [...methodsOnServer, created];
+      return created;
+    });
+    vi.mocked(updatePaymentMethod).mockImplementation(async (id, input) => {
+      const updated = { ...input, id };
+      methodsOnServer = methodsOnServer.map((method) => (method.id === id ? updated : method));
+      return updated;
+    });
+    vi.mocked(deletePaymentMethod).mockImplementation(async (id) => {
+      methodsOnServer = methodsOnServer.filter((method) => method.id !== id);
+    });
   });
 
   it("lists the default payment methods and nothing else", () => {

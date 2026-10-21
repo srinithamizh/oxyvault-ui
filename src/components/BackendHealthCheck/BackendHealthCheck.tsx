@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { FiRefreshCw, FiServer } from "react-icons/fi";
 import Button from "@/components/Button/Button";
@@ -31,6 +32,10 @@ function wait(ms: number, signal: AbortSignal): Promise<void> {
 
 export default function BackendHealthCheck() {
   const { t } = useTranslation();
+  const { mutateAsync: runHealthCheck } = useMutation({
+    mutationFn: (signal: AbortSignal) => checkBackendHealth(signal),
+    meta: { showGlobalLoader: false },
+  });
   const [open, setOpen] = useState(false);
   const [run, setRun] = useState(0);
   const [status, setStatus] = useState<CheckStatus>("checking");
@@ -51,7 +56,7 @@ export default function BackendHealthCheck() {
     const checkUntilDeadline = async () => {
       while (Date.now() < deadline && !controller.signal.aborted) {
         try {
-          await checkBackendHealth(controller.signal);
+          await runHealthCheck(controller.signal);
           if (Date.now() <= deadline && !controller.signal.aborted) {
             setStatus("success");
             dismissTimerRef.current = window.setTimeout(() => setOpen(false), SUCCESS_DISMISS_MS);
@@ -78,7 +83,7 @@ export default function BackendHealthCheck() {
       controllerRef.current = null;
       window.clearInterval(countdown);
     };
-  }, [open, run]);
+  }, [open, run, runHealthCheck]);
 
   const startCheck = () => {
     if (dismissTimerRef.current !== null) window.clearTimeout(dismissTimerRef.current);

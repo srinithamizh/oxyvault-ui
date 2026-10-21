@@ -1,4 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
 import AuthProvider from "./AuthProvider";
 import { useAuth } from "@/hooks/useAuth/useAuth";
@@ -6,6 +8,7 @@ import { apiRequest, ApiError } from "@/services/apiClient/apiClient";
 import { AuthError, login, logout, register } from "@/services/authService/authService";
 import { getAccessToken } from "@/services/tokenStore/tokenStore";
 import { fullNameOf, seedUsers } from "@/test/mockUsers";
+import { createQueryClient } from "@/data/queryClient";
 
 vi.mock("@/services/authService/authService", async () => {
   const { createMockedAuthService } = await import("@/test/mockAuthService");
@@ -20,6 +23,9 @@ function stubFetch(status = 200, body: unknown = true) {
 }
 
 const SEED = { identifier: seedUsers[0].email, password: seedUsers[0].password };
+
+const renderWithQueryClient = (ui: ReactNode) =>
+  render(<QueryClientProvider client={createQueryClient()}>{ui}</QueryClientProvider>);
 
 function Probe() {
   const { user, login, register, logout } = useAuth();
@@ -43,7 +49,7 @@ function Probe() {
 }
 
 const renderProbe = (initialUser?: Parameters<typeof AuthProvider>[0]["initialUser"]) =>
-  render(
+  renderWithQueryClient(
     <AuthProvider initialUser={initialUser}>
       <Probe />
     </AuthProvider>,
@@ -92,7 +98,7 @@ describe("AuthProvider", () => {
     renderProbe();
     await user.click(screen.getByRole("button", { name: "login" }));
     await screen.findByText(fullNameOf(seedUsers[0]));
-    expect(login).toHaveBeenCalledWith(SEED);
+    expect(vi.mocked(login).mock.calls[0]?.[0]).toEqual(SEED);
   });
 
   it("rejects with an AuthError from the service", async () => {
@@ -106,7 +112,7 @@ describe("AuthProvider", () => {
       );
     }
     const user = userEvent.setup();
-    render(
+    renderWithQueryClient(
       <AuthProvider>
         <Catcher />
       </AuthProvider>,

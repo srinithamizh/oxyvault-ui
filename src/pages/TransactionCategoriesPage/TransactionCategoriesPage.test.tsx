@@ -6,6 +6,7 @@ import type { TransactionCategory } from "@/types/transactionOptions";
 import {
   createCategory,
   deleteCategory,
+  getCategories,
   updateCategory,
 } from "@/services/transactionCategoriesService/transactionCategoriesService";
 
@@ -14,7 +15,6 @@ vi.mock("@/services/transactionCategoriesService/transactionCategoriesService", 
   createCategory: vi.fn(),
   updateCategory: vi.fn(),
   deleteCategory: vi.fn(),
-  clearCategoriesCache: vi.fn(),
 }));
 
 const testCategories: TransactionCategory[] = [
@@ -32,13 +32,26 @@ const testCategories: TransactionCategory[] = [
 
 const list = () => screen.getByRole("list", { name: "Categories" });
 const renderPage = () => renderWithProviders(<TransactionCategoriesPage />, { initialCategories: testCategories });
+let categoriesOnServer = testCategories;
 
 describe("TransactionCategoriesPage", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(createCategory).mockImplementation(async (input) => ({ ...input, id: "c-new" }));
-    vi.mocked(updateCategory).mockImplementation(async (id, input) => ({ ...input, id }));
-    vi.mocked(deleteCategory).mockResolvedValue();
+    categoriesOnServer = [...testCategories];
+    vi.mocked(getCategories).mockImplementation(async () => categoriesOnServer);
+    vi.mocked(createCategory).mockImplementation(async (input) => {
+      const created = { ...input, id: "c-new" };
+      categoriesOnServer = [...categoriesOnServer, created];
+      return created;
+    });
+    vi.mocked(updateCategory).mockImplementation(async (id, input) => {
+      const updated = { ...input, id };
+      categoriesOnServer = categoriesOnServer.map((category) => (category.id === id ? updated : category));
+      return updated;
+    });
+    vi.mocked(deleteCategory).mockImplementation(async (id) => {
+      categoriesOnServer = categoriesOnServer.filter((category) => category.id !== id);
+    });
   });
 
   it("lists the default categories and nothing else", () => {
@@ -73,7 +86,7 @@ describe("TransactionCategoriesPage", () => {
     await user.click(screen.getByRole("radio", { name: "Income" }));
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(await within(list()).findByText("Dividends")).toBeInTheDocument();
-    expect(createCategory).toHaveBeenCalledWith({ name: "Dividends", type: "income" });
+    expect(vi.mocked(createCategory).mock.calls[0]?.[0]).toEqual({ name: "Dividends", type: "income" });
   });
 
   it("changes a category's type when editing", async () => {

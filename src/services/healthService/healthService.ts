@@ -5,7 +5,6 @@ export async function checkBackendHealth(signal?: AbortSignal): Promise<void> {
     auth: false,
     expectedStatus: 200,
     method: "GET",
-    showLoader: false,
     signal,
   });
 }

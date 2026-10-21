@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth/useAuth";
 import {
   TransactionCategoriesContext,
   type TransactionCategoriesContextValue,
@@ -9,113 +11,114 @@ import {
   getCategories,
   updateCategory as updateCategoryRequest,
 } from "@/services/transactionCategoriesService/transactionCategoriesService";
+import { queryKeys } from "@/data/queryClient";
+import { getAccessToken } from "@/services/tokenStore/tokenStore";
 import type { TransactionCategory, TransactionCategoryInput } from "@/types/transactionOptions";
 
 interface TransactionCategoriesProviderProps {
   children: ReactNode;
-  /** Allows page tests to supply categories without making a backend request. */
   initialCategories?: TransactionCategory[];
+  shouldLoad?: boolean;
 }
 
 export default function TransactionCategoriesProvider({
   children,
   initialCategories,
+  shouldLoad = true,
 }: TransactionCategoriesProviderProps) {
-  const [categories, setCategories] = useState<TransactionCategory[]>(initialCategories ?? []);
-  const [loading, setLoading] = useState(initialCategories === undefined);
-  const [error, setError] = useState<"load" | "mutation" | null>(null);
-  const categoriesVersion = useRef(0);
+  const { user, isInitializing } = useAuth();
+  const queryClient = useQueryClient();
+  const queryKey = queryKeys.transactionCategories(user?.id ?? "anonymous");
+  const categoriesQuery = useQuery({
+    queryKey,
+    queryFn: getCategories,
+    enabled: shouldLoad && !isInitializing && user !== null && Boolean(getAccessToken()),
+    staleTime: Infinity,
+    initialData: initialCategories,
+    meta: { requiresAuth: true },
+  });
 
-  const reloadCategories = useCallback(async () => {
-    const requestVersion = ++categoriesVersion.current;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await getCategories();
-      if (requestVersion === categoriesVersion.current) setCategories(result);
-    } catch (cause) {
-      if (requestVersion === categoriesVersion.current) {
-        setError("load");
-        console.error("Could not load transaction categories.", cause instanceof Error ? cause.message : "Unexpected error");
-      }
-    } finally {
-      if (requestVersion === categoriesVersion.current) setLoading(false);
-    }
-  }, []);
+  const createMutation = useMutation({
+    mutationFn: createCategory,
+    onSuccess: (created) => {
+      queryClient.setQueryData<TransactionCategory[]>(queryKey, (current) => [...(current ?? []), created]);
+      return queryClient.invalidateQueries({ queryKey });
+    },
+  });
+  const updateMutation = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: TransactionCategoryInput }) => updateCategoryRequest(id, input),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<TransactionCategory[]>(queryKey, (current) =>
+        current?.map((category) => (category.id === updated.id ? updated : category)),
+      );
+      return queryClient.invalidateQueries({ queryKey });
+    },
+  });
+  const deleteMutation = useMutation({
+    mutationFn: deleteCategory,
+    onSuccess: (_result, id) => {
+      queryClient.setQueryData<TransactionCategory[]>(queryKey, (current) => current?.filter((category) => category.id !== id));
+      return queryClient.invalidateQueries({ queryKey });
+    },
+  });
+  const mutationFailed = createMutation.isError || updateMutation.isError || deleteMutation.isError;
+  const error = categoriesQuery.isError ? "load" : mutationFailed ? "mutation" : null;
 
   useEffect(() => {
-    if (initialCategories !== undefined) return;
+    if (categoriesQuery.error) {
+      console.error(
+        "Could not load transaction categories.",
+        categoriesQuery.error instanceof Error ? categoriesQuery.error.message : "Unexpected error",
+      );
+    }
+  }, [categoriesQuery.error]);
 
-    let active = true;
-    const requestVersion = categoriesVersion.current;
-    getCategories()
-      .then((result) => {
-        if (active && requestVersion === categoriesVersion.current) setCategories(result);
-      })
-      .catch((cause: unknown) => {
-        if (!active || requestVersion !== categoriesVersion.current) return;
-        setError("load");
-        console.error("Could not load transaction categories.", cause instanceof Error ? cause.message : "Unexpected error");
-      })
-      .finally(() => {
-        if (active && requestVersion === categoriesVersion.current) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [initialCategories]);
+  const resetMutationErrors = () => {
+    createMutation.reset();
+    updateMutation.reset();
+    deleteMutation.reset();
+  };
 
-  const addCategory = useCallback(async (input: TransactionCategoryInput) => {
-    setError(null);
+  const reloadCategories = async () => {
+    await categoriesQuery.refetch();
+  };
+
+  const addCategory = async (input: TransactionCategoryInput) => {
+    resetMutationErrors();
     try {
-      const created = await createCategory(input);
-      categoriesVersion.current += 1;
-      setCategories((current) => [...current, created]);
-      setLoading(false);
+      await createMutation.mutateAsync(input);
     } catch (cause) {
-      setError("mutation");
       console.error("Could not create transaction category.", cause instanceof Error ? cause.message : "Unexpected error");
     }
-  }, []);
+  };
 
-  const updateCategory = useCallback(async (id: string, input: TransactionCategoryInput) => {
-    setError(null);
+  const updateCategory = async (id: string, input: TransactionCategoryInput) => {
+    resetMutationErrors();
     try {
-      const updated = await updateCategoryRequest(id, input);
-      categoriesVersion.current += 1;
-      setCategories((current) => current.map((category) => (category.id === id ? updated : category)));
-      setLoading(false);
+      await updateMutation.mutateAsync({ id, input });
     } catch (cause) {
-      setError("mutation");
       console.error("Could not update transaction category.", cause instanceof Error ? cause.message : "Unexpected error");
     }
-  }, []);
+  };
 
-  const removeCategory = useCallback(async (id: string) => {
-    setError(null);
+  const removeCategory = async (id: string) => {
+    resetMutationErrors();
     try {
-      await deleteCategory(id);
-      categoriesVersion.current += 1;
-      setCategories((current) => current.filter((category) => category.id !== id));
-      setLoading(false);
+      await deleteMutation.mutateAsync(id);
     } catch (cause) {
-      setError("mutation");
       console.error("Could not delete transaction category.", cause instanceof Error ? cause.message : "Unexpected error");
     }
-  }, []);
+  };
 
-  const value = useMemo<TransactionCategoriesContextValue>(
-    () => ({
-      categories,
-      loading,
-      error,
-      reloadCategories,
-      addCategory,
-      updateCategory,
-      removeCategory,
-    }),
-    [categories, loading, error, reloadCategories, addCategory, updateCategory, removeCategory],
-  );
+  const value: TransactionCategoriesContextValue = {
+    categories: categoriesQuery.data ?? initialCategories ?? [],
+    loading: (user !== null && (isInitializing || categoriesQuery.isFetching)) && initialCategories === undefined,
+    error,
+    reloadCategories,
+    addCategory,
+    updateCategory,
+    removeCategory,
+  };
 
   return <TransactionCategoriesContext.Provider value={value}>{children}</TransactionCategoriesContext.Provider>;
 }

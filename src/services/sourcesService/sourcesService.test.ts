@@ -1,7 +1,6 @@
 import { apiRequest } from "@/services/apiClient/apiClient";
 import { getAccessToken } from "@/services/tokenStore/tokenStore";
 import {
-  clearSourcesCache,
   createSource,
   deleteSource,
   getSources,
@@ -52,10 +51,9 @@ describe("sourcesService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getAccessToken).mockReturnValue("test-token");
-    clearSourcesCache();
   });
 
-  it("loads authenticated sources, omits backend-only fields, and caches the result", async () => {
+  it("loads authenticated sources and omits backend-only fields", async () => {
     vi.mocked(apiRequest).mockResolvedValueOnce(backendSources);
 
     const sources = await getSources();
@@ -73,7 +71,6 @@ describe("sourcesService", () => {
         balance: 1842000,
       },
     ]);
-    await expect(getSources()).resolves.toEqual(sources);
     expect(apiRequest).toHaveBeenCalledTimes(1);
     expect(apiRequest).toHaveBeenCalledWith("/sources", { auth: true });
   });
@@ -95,16 +92,14 @@ describe("sourcesService", () => {
   it("does not make requests without an access token", async () => {
     vi.mocked(getAccessToken).mockReturnValue(null);
 
-    expect(() => getSources()).toThrow("An access token is required");
+    await expect(getSources()).rejects.toThrow("An access token is required");
     await expect(createSource({ type: "cash", name: "Cash", balance: 0 })).rejects.toThrow("An access token is required");
     expect(apiRequest).not.toHaveBeenCalled();
   });
 
-  it("posts the selected source fields with bearer authentication and invalidates the cache", async () => {
+  it("posts the selected source fields with bearer authentication", async () => {
     const bankInput = { type: "bank", name: "Axis", accountType: "current", lastFour: "1234", balance: 0 } as const;
-    vi.mocked(apiRequest)
-      .mockResolvedValueOnce({ id: "source-5", ...bankInput })
-      .mockResolvedValueOnce(backendSources);
+    vi.mocked(apiRequest).mockResolvedValueOnce({ id: "source-5", ...bankInput });
 
     await expect(createSource(bankInput)).resolves.toEqual({ id: "source-5", ...bankInput });
     expect(apiRequest).toHaveBeenNthCalledWith(1, "/sources", {
@@ -112,15 +107,11 @@ describe("sourcesService", () => {
       body: bankInput,
       auth: true,
     });
-    await getSources();
-    expect(apiRequest).toHaveBeenNthCalledWith(2, "/sources", { auth: true });
   });
 
-  it("sends PUT replacement fields and invalidates the cache", async () => {
+  it("sends PUT replacement fields", async () => {
     const cardInput = { type: "card", name: "Card", balance: 1200 } as const;
-    vi.mocked(apiRequest)
-      .mockResolvedValueOnce({ id: "source/1", ...cardInput })
-      .mockResolvedValueOnce(backendSources);
+    vi.mocked(apiRequest).mockResolvedValueOnce({ id: "source/1", ...cardInput });
 
     await updateSource("source/1", cardInput);
 
@@ -129,47 +120,13 @@ describe("sourcesService", () => {
       body: cardInput,
       auth: true,
     });
-    await getSources();
-    expect(apiRequest).toHaveBeenNthCalledWith(2, "/sources", { auth: true });
   });
 
-  it("deletes a source and invalidates the cache after a 204 response", async () => {
-    vi.mocked(apiRequest).mockResolvedValueOnce(undefined).mockResolvedValueOnce(backendSources);
+  it("deletes a source after a 204 response", async () => {
+    vi.mocked(apiRequest).mockResolvedValueOnce(undefined);
 
     await deleteSource("source-1");
 
     expect(apiRequest).toHaveBeenNthCalledWith(1, "/sources/source-1", { method: "DELETE", auth: true });
-    await getSources();
-    expect(apiRequest).toHaveBeenNthCalledWith(2, "/sources", { auth: true });
-  });
-
-  it("does not cache an in-flight response after a mutation invalidates it", async () => {
-    let resolvePendingRequest!: (sources: typeof backendSources) => void;
-    vi.mocked(apiRequest)
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolvePendingRequest = resolve;
-          }),
-      )
-      .mockResolvedValueOnce({ id: "source-5", type: "cash", name: "Cash", balance: 20 })
-      .mockResolvedValueOnce([{ id: "source-5", type: "cash", name: "Cash", balance: 20 }]);
-
-    const staleRequest = getSources();
-    await createSource({ type: "cash", name: "Cash", balance: 20 });
-    resolvePendingRequest(backendSources);
-    await staleRequest;
-
-    await expect(getSources()).resolves.toEqual([{ id: "source-5", type: "cash", name: "Cash", balance: 20 }]);
-    expect(apiRequest).toHaveBeenCalledTimes(3);
-  });
-
-  it("clears cached data when the authenticated user changes", async () => {
-    vi.mocked(apiRequest).mockResolvedValueOnce(backendSources).mockResolvedValueOnce([]);
-
-    await getSources();
-    vi.mocked(getAccessToken).mockReturnValue("other-token");
-    await expect(getSources()).resolves.toEqual([]);
-    expect(apiRequest).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { useIsFetching, useIsMutating } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import Spinner from "@/components/Spinner/Spinner";
-import { useApiLoading } from "@/hooks/useApiLoading/useApiLoading";
 
 /** Requests that finish faster than this never flash a loader. */
 export const LOADER_DELAY_MS = 150;
@@ -33,5 +33,11 @@ function PendingOverlay() {
 
 /** A full-screen loader shown while the app waits on the backend. It also blocks double submits. */
 export default function GlobalLoader() {
-  return useApiLoading() ? <PendingOverlay /> : null;
+  const fetching = useIsFetching({
+    predicate: (query) => query.meta?.showGlobalLoader !== false,
+  });
+  const mutating = useIsMutating({
+    predicate: (mutation) => mutation.options.meta?.showGlobalLoader !== false,
+  });
+  return fetching + mutating > 0 ? <PendingOverlay /> : null;
 }
