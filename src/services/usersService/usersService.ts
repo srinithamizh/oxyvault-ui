@@ -19,43 +19,66 @@ export interface UserPage {
   totalPages: number;
 }
 
-interface UserResponse extends Omit<ManagedUser, "role"> {
-  role: string;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
-interface UserPageResponse extends Omit<UserPage, "content"> {
-  content: UserResponse[];
+function integerOr(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isInteger(value) ? value : fallback;
 }
 
-function parseUser(user: UserResponse): ManagedUser {
-  const role = user.role.toLowerCase();
-  if (!isUserRole(role)) throw new Error("Unexpected role in /users response.");
-  return { ...user, role };
+function parseUser(value: unknown): ManagedUser {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== "string" ||
+    typeof value.name !== "string" ||
+    typeof value.username !== "string" ||
+    typeof value.email !== "string" ||
+    typeof value.role !== "string"
+  ) {
+    throw new Error("A user in the /admin/users response is missing a required field.");
+  }
+
+  const normalizedRole = value.role.replace(/^ROLE_/, "").toLowerCase();
+  if (!isUserRole(normalizedRole)) throw new Error("A user in the /admin/users response has an unknown role.");
+  return {
+    id: value.id,
+    name: value.name,
+    username: value.username,
+    email: value.email,
+    role: normalizedRole,
+  };
 }
 
 export async function getUsers(page: number, size: number): Promise<UserPage> {
-  const response = await apiRequest<UserPageResponse>("/admin/users", {
+  const response = await apiRequest<unknown>("/admin/users", {
     query: { page: String(page), size: String(size) },
   });
 
-  if (
-    !response ||
-    !Array.isArray(response.content) ||
-    typeof response.first !== "boolean" ||
-    typeof response.last !== "boolean" ||
-    !Number.isInteger(response.number) ||
-    !Number.isInteger(response.size) ||
-    !Number.isInteger(response.totalElements) ||
-    !Number.isInteger(response.totalPages)
-  ) {
-    throw new Error("Unexpected response from /users.");
+  if (!isRecord(response) || !Array.isArray(response.content)) {
+    throw new Error("Unexpected response from /admin/users: expected a page with a content array.");
   }
 
-  return { ...response, content: response.content.map(parseUser) };
+  const pageable = isRecord(response.pageable) ? response.pageable : {};
+  const pageNumber = integerOr(response.number, integerOr(pageable.pageNumber, page));
+  const pageSize = integerOr(response.size, integerOr(pageable.pageSize, size));
+  const totalElements = integerOr(response.totalElements, response.content.length);
+  const totalPages = integerOr(response.totalPages, Math.ceil(totalElements / Math.max(pageSize, 1)));
+  const users = response.content.map(parseUser);
+
+  return {
+    content: users,
+    number: pageNumber,
+    size: pageSize,
+    totalElements,
+    totalPages,
+    first: typeof response.first === "boolean" ? response.first : pageNumber === 0,
+    last: typeof response.last === "boolean" ? response.last : pageNumber >= totalPages - 1,
+  };
 }
 
 export async function updateUserRole(id: string, role: UserRole): Promise<void> {
-  await apiRequest<void>(`/admin/users/${encodeURIComponent(id)}`, {
+  await apiRequest<void>(`/admin/users/${encodeURIComponent(id)}/role`, {
     method: "PATCH",
     body: { role: role.toUpperCase() },
   });
