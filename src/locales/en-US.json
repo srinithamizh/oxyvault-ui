@@ -8,7 +8,8 @@
     "show": "Show",
     "hide": "Hide",
     "showPassword": "Show password",
-    "hidePassword": "Hide password"
+    "hidePassword": "Hide password",
+    "loading": "Loading…"
   },
   "nav": {
     "primary": "Primary",

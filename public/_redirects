@@ -1,0 +1,3 @@
+# Single-page app: serve index.html for every path so refreshing /login (or any route) works.
+# Used by Netlify and Cloudflare Pages.
+/*    /index.html   200

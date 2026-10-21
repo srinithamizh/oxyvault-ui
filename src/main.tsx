@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import App from "./App";
 import "./i18n/i18n";
+import GlobalLoader from "./components/GlobalLoader/GlobalLoader";
 import SourcesProvider from "./features/settings/sources/SourcesProvider/SourcesProvider";
 import PaymentMethodsProvider from "./features/settings/paymentMethods/PaymentMethodsProvider/PaymentMethodsProvider";
 import TransactionCategoriesProvider from "./features/settings/transactionCategories/TransactionCategoriesProvider/TransactionCategoriesProvider";
@@ -19,6 +20,7 @@ createRoot(document.getElementById("root")!).render(
             <TransactionCategoriesProvider>
               <BrowserRouter>
                 <App />
+                <GlobalLoader />
               </BrowserRouter>
             </TransactionCategoriesProvider>
           </PaymentMethodsProvider>

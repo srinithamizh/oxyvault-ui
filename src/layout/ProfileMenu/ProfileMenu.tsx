@@ -73,7 +73,8 @@ export default function ProfileMenu({ user }: { user: UserSummary }) {
           onCancel={() => setConfirmingLogout(false)}
           onConfirm={() => {
             setConfirmingLogout(false);
-            logout();
+            // The local session is cleared even if the server call fails, so there is nothing to show.
+            logout().catch(() => {});
           }}
         />
       )}

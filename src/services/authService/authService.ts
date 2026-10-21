@@ -1,4 +1,5 @@
 import { ApiError, apiRequest, NetworkError } from "@/services/apiClient/apiClient";
+import { withLoading } from "@/services/loadingStore/loadingStore";
 import { clearAccessToken, setAccessToken } from "@/services/tokenStore/tokenStore";
 import { isUserRole, type UserSummary } from "@/types/user";
 
@@ -104,6 +105,11 @@ function registrationConflict(body: unknown): AuthErrorCode {
 }
 
 export async function login({ identifier, password }: LoginInput): Promise<AuthSession> {
+  // Logging in is two requests (credentials, then profile); keep the loader up across both.
+  return withLoading(() => loginAndLoadProfile({ identifier, password }));
+}
+
+async function loginAndLoadProfile({ identifier, password }: LoginInput): Promise<AuthSession> {
   try {
     const data = await apiRequest<LoginResponse>("/auth/login", {
       method: "POST",
@@ -146,6 +152,7 @@ export async function register(input: RegisterInput): Promise<RegisterResponse> 
 export async function checkUsernameAvailable(username: string, signal?: AbortSignal): Promise<boolean> {
   const data = await apiRequest<boolean>("/auth/validate-username", {
     auth: false,
+    showLoader: false, // runs while the user types; the inline status text is its feedback
     query: { username },
     signal,
   });

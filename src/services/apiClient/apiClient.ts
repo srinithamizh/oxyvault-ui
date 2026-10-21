@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "@/config/apiBaseUrl/apiBaseUrl";
+import { startLoading, stopLoading } from "@/services/loadingStore/loadingStore";
 import { getAccessToken } from "@/services/tokenStore/tokenStore";
 
 /** The server answered with a non-2xx status. */
@@ -31,6 +32,8 @@ export interface RequestOptions {
   signal?: AbortSignal;
   /** Attach the bearer token. Set to `false` for public endpoints such as login. Defaults to `true`. */
   auth?: boolean;
+  /** Show the global loader while waiting. Set to `false` for background checks. Defaults to `true`. */
+  showLoader?: boolean;
 }
 
 let onUnauthorized: (() => void) | null = null;
@@ -56,6 +59,17 @@ async function readBody(response: Response): Promise<unknown> {
  * attached to requests that ask for it.
  */
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  if (options.showLoader === false) return sendRequest<T>(path, options);
+
+  startLoading();
+  try {
+    return await sendRequest<T>(path, options);
+  } finally {
+    stopLoading();
+  }
+}
+
+async function sendRequest<T>(path: string, options: RequestOptions): Promise<T> {
   const { method = "GET", body, query, signal, auth = true } = options;
 
   const url = new URL(`${API_BASE_URL}${path}`);

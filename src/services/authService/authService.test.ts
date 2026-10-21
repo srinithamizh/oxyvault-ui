@@ -1,4 +1,5 @@
 import { AuthError, checkUsernameAvailable, login, logout, register } from "./authService";
+import { getPendingCount } from "@/services/loadingStore/loadingStore";
 import { fakeBackend } from "@/test/fakeBackend";
 import { fullNameOf, seedUsers } from "@/test/mockUsers";
 import { getAccessToken, setAccessToken } from "@/services/tokenStore/tokenStore";
@@ -42,6 +43,19 @@ describe("authService", () => {
           role: seed.role,
         },
       });
+    });
+
+    it("uses the global loader while waiting", async () => {
+      const seen: number[] = [];
+      const original = globalThis.fetch;
+      vi.stubGlobal("fetch", (...args: Parameters<typeof fetch>) => {
+        seen.push(getPendingCount());
+        return original(...args);
+      });
+      await login({ identifier: seed.email, password: seed.password });
+      // /auth/login and /profile both run while the loader is up; it never drops to 0 in between.
+      expect(seen).toEqual([2, 2]);
+      expect(getPendingCount()).toBe(0);
     });
 
     it("posts to /auth/login with no credentials or token", async () => {
@@ -160,6 +174,17 @@ describe("authService", () => {
 
     it("is false when the username exists, ignoring case", async () => {
       await expect(checkUsernameAvailable(seed.username.toUpperCase())).resolves.toBe(false);
+    });
+
+    it("does not use the global loader", async () => {
+      const seen: number[] = [];
+      const original = globalThis.fetch;
+      vi.stubGlobal("fetch", (...args: Parameters<typeof fetch>) => {
+        seen.push(getPendingCount());
+        return original(...args);
+      });
+      await checkUsernameAvailable("brand.new");
+      expect(seen).toEqual([0]);
     });
 
     it("throws on an unexpected response", async () => {
